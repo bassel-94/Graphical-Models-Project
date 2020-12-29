@@ -19,3 +19,8 @@ Potential key points to include in the report
 
 ## Conclusion
 Conclude on how this may be useful in other cases.
+
+## Resources
+
+https://www.rpubs.com/Steven_Surya/Dynamic-network
+https://www.rdocumentation.org/packages/networkDynamicData/versions/0.2.1/topics/concurrencyComparisonNets
