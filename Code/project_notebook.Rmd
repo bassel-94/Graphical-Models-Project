@@ -1,0 +1,61 @@
+---
+title: "Project notebook"
+output:
+html_notebook: default
+---
+
+```{r, include = FALSE}
+#-- clear environment and install packages
+rm(list=ls())
+if (!require("EpiModel")) install.packages("EpiModel")
+if (!require("networkDynamicData")) install.packages("networkDynamicData")
+```
+
+## Loading and exploring the observed network
+
+The aim of this study is to simulate a network to study the behavior of the disease transmission in an epidemic. To do so, we will use the observed network concurrencyComparisonNets which is composed out of three single-mode undirected dynamic networks with an infection started from a single seed, The networks were simulated using the tergm and EpiModel packages. All three networks have the same size, relationship duration distribution and cross-sectional mean degree, but different crosssectional degree distributions. They are intended as examples for illustrating and comparing the effects of concurrent overlapping partnerships on the connectivity and dynamic transmission potential of networks.
+
+We will first explore the base model (called base)
+
+```{r}
+#-- load the network
+data(concurrencyComparisonNets)
+base_network = base
+
+#-- compute summary statistics
+print(summary(base_network, print.adj = FALSE))
+```
+
+```{r}
+#-- get a look of the summary statistics of the network as a dataframe
+print(summary(as.data.frame(base_network)))
+```
+
+At a first glance, we notice that the network contains 1000 nodes, 100 timesteps, a cross-sectional mean degree that varies stochastically around 0.75, and a naive mean of about 20 timesteps that makes the network dynamic. It it worth mentioning that the density of the network is around 0.0038.
+
+Since we have 100 timesteps, we can plot the network at timesteps 20 and 100 to visualize the difference.
+
+```{r, fig.align='center', fig.width=14, fig.height=8}
+#-- do 2 plots side by side
+par(mfrow=c(1,2))
+
+#-- define color palettes
+my.pal = c("skyblue", "darkred")
+col1 = my.pal[as.factor(get.vertex.attribute.active(base_network,'status',at=20))]
+col2 = my.pal[as.factor(get.vertex.attribute.active(base_network,'status',at=100))]
+
+#-- do plots
+plot(network.extract(base_network,at=20), vertex.col =  col1, main = "Prevalence at timestep 20")
+plot(network.extract(base_network,at=100), vertex.col = col2, main = "Prevalence at timestep 100")
+legend("bottomright", legend=c("Not Infected", "Infected"), col = my.pal, pch = 19, pt.cex=1.5)
+```
+
+Plotting the static network at different time steps and over different simulations can show the patterns of partnership formation and infection spread over those partnerships. 
+The color coding emphasizes the spread of the disease across the two time points that we have taken into account. To better visualize the spread of the infection across all timesteps, we will do 
+
+```{r, fig.align='center', fig.width=8, fig.height=5}
+#-- compare infection time series
+t = sapply(1:100,function(t){sum(get.vertex.attribute.active(base,'status',at=t)==1)})
+plot(t, col='darkred', type ='l', xlab='timestep', ylab='Number of infected', main = "Evolution of infection")
+```
+
