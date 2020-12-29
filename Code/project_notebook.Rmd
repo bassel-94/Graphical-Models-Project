@@ -69,7 +69,6 @@ legend("bottomright", legend=c("Not Infected", "Infected"), col = my.pal, pch = 
 #render.d3movie(base_network, displaylabels=TRUE, output.mode = "htmlWidget")
 ```
 
-
 Plotting the static network at different time steps and over different simulations can show the patterns of partnership formation and infection spread over those partnerships. 
 The color coding emphasizes the spread of the disease across the two time points that we have taken into account.
 
@@ -80,7 +79,7 @@ To better visualize the spread of the infection across all timesteps, we will pl
 t = sapply(1:100, function(t){sum(get.vertex.attribute.active(base,'status',at=t)==1)})
 plot(t, col='darkred', lwd = 2,
      type ='l', xlab='timestep', 
-     ylab='Number of infected', 
+     ylab='Number of infected',
      main = "Evolution of infected individuals across time")
 ```
 
@@ -88,10 +87,53 @@ We can distinguish the well known exponential growth of the number of diseased i
 
 **Maybe do some further exploratory data analysis like Plot the edge formation over time and Plot the network’s centrality over time?**
 
+## Target statistics for network modeling
+
 Worth mentioning, to model a network with epimodel, we need the following parmeters :
- * Density : This sets the baseline probability of forming a tie, and is typically included in all models (analogous to an intercept term in a linear model).
+
+ * Density : This sets the baseline probability of forming a tie, and is typically included in all models (analogous to an intercept term in a linear model). The ergm term is edges so we need to compute it. In the case of an undirected graph, the edges can be computed from the density as follows 
+
+
+$$
+D = \frac{2 |E|}{|V| \times (|V|-1)}
+$$
+
  * Heterogeneity by attribute: This allows the probability of an edge to depend on the nodal attribute “risk” we set up above. In our model, we will use it to set a higher mean degree for a high-risk group. The ERGM term for this is nodefactor. The statistic is the count of the number of ties for members of each attribute value.
+ 
  * Selective mixing by attribute: This allows the probability of an edge to depend on the attributes of both nodes. It is used to capture the level of assortative (or disassortative) mixing between groups. The ERGM term for this is nodematch. The statistic is the count of the number of ties between nodes of the same risk group.
+ * Degree distribution: There are many ways to specify further heterogeneity in the degree distribution. In the absence of further specification, the conditional probability of a partnership forming is Bernoulli with the (group-specific) parameter determined by the coefficients on the terms above, and the resulting degree distribution is a binomial mixture. Here we will modify this by specifying the number of nodes which have more than one partnership at any time. The ERGM term for this is concurrent.
+ 
+```{r, include = FALSE}
+#-- target statistic edges from the the definition of the density
+vertices = 1000
+density = 0.0038
+egdes = 0.5*density*vertices*(vertices -1)
+
+#-- Heterogeneity by attribute, which represents the nodefactor
+node_fac = sum(get.edge.activity(base_network, as.spellList=TRUE)$terminus.censored)
+node_fac
+
+#-- from the above number we can compute the mean degree of high risk and low risk groups
+high_risk = node_fac/(vertices/2)
+low_risk = ((vertices/2)-node_fac)/(vertices/2)
+
+cat("The probability of infection in the high risk group is : ", high_risk)
+cat("\nThe probability of infection in the low risk group is : ", low_risk)
+```
+
+```{r}
+#-- getting the nodefactor
+sum(get.edge.activity(base_network, as.spellList=TRUE)$onset.censored)
+```
+
+
+```{r}
+library(tsna)
+#-- computing the concurrent using the formula below
+ergmstats.res = tErgmStats(base,'~edges + concurrent', start=0,end=100,time.interval = 1)
+summary(ergmstats.res)
+0.82*250
+```
 
 ## Modeling a network
 
@@ -101,8 +143,115 @@ Possible models from the epimodel package from the vignette:
  * Susceptible-Infectious-Recovered/Immune (SIR): A three-state model with an additional one-way transition from infected to recovered with immunity (e.g. measels or maybe covid but this may be too complex given the simplistic structure of our model).
 
 **maybe we can test the first two with the right parameters?**
- 
+
+### Modeling independent SIS model
+
+#### 1. Estimating network structure
+
 ```{r}
+library(EpiModel)
+
+#-- initialize the network
+nw = network::network.initialize(n = 1000, directed = FALSE)
+nw = network::set.vertex.attribute(nw, "risk", rep(0:1, each = 500))
+
+#-- ERGM formulation formula
+formation = ~ edges + nodefactor("risk") + nodematch("risk") + concurrent
+
+#-- set target statistics based on the tutorial in the vignette of epimodel. Note that the value of nodematch is not well studied
+target.stats = c(250, 371, 225, 180)
+
+#-- ERGM dissolution coefficients
+coef.diss = dissolution_coefs(dissolution = ~ offset(edges), duration = 100)
+coef.diss
+
+#-- Estimate the model using netest (network estimation)
+est1 = netest(nw, formation, target.stats, coef.diss)
 
 ```
+
+#### 2. Diagnostic fit of the network
+
+Here we will examine dynamic diagnostics only. These are run with the netdx function, which simulates from the model fit object returned by netest. We simulate from the model 10 times over 1000 time steps.
+
+```{r}
+dx = netdx(est1, nsims = 10, nsteps = 1000)
+dx
+```
+
+```{r, fig.align='center', fig.width=14, fig.height=8}
+plot(dx)
+```
+
+
+```{r, fig.align='center', fig.width=14, fig.height=6}
+par(mfrow = c(1, 2))
+plot(dx, type = "duration")
+plot(dx, type = "dissolution")
+```
+
+#### 3. Epidemic model simulation
+
+For initial conditions, we use the i.num argument to set the initial number infected at the start. The base SIS model requires three parameters. The infection probability (inf.prob) is the risk of transmission per act between a susceptible person and an infected person. The act rate (act.rate) is the mean number of acts that occur within each active partnership during each time step. The mean frequency of acts per person per time step is the mean number of partnerships per person multiplied by this act rate parameter. The recovery rate (rec.rate) is the probability that an infected person recovers at a given time step.
+
+```{r}
+init = init.net(i.num = 1)
+param = param.net(inf.prob = 1, act.rate = 20, rec.rate = 0)
+```
+
+The control settings contain the structural features of the model, which include the epidemic type, number of time steps per simulation, and number of simulations. The epi.by argument allows us to pass in a categorical nodal attribute which will be used to stratify the prevalence outcome statistics.
+
+```{r}
+control = control.net(type = "SIS", nsteps = 100, nsims = 10, epi.by = "risk")
+```
+
+Once all of the necessary model specifications have been set, we simulate and plot the network.
+
+```{r}
+sim1 = netsim(est1, param, init, control)
+```
+
+```{r}
+summary(sim1, at = 100)
+```
+
+```{r, fig.align='center', fig.width=14, fig.height=8}
+par(mfrow = c(1, 2))
+plot(sim1, type = "network", at = 1, sims = "mean", col.status = TRUE, main = "Prevalence at t1")
+plot(sim1, type = "network", at = 100, sims = "mean", col.status = TRUE, main = "Prevalence at t100")
+```
+
+```{r}
+net.sim = netsim(est1,param.net(inf.prob=1),init.net(i.num=1),control.net(type='SI',nsteps = 100,nsims=1,keep.network = TRUE))
+```
+```{r}
+summary(net.sim, at = 100)
+```
+
+
+```{r, fig.align='center', fig.width=14, fig.height=8}
+par(mfrow = c(1, 2))
+plot(net.sim, type = "network", at = 1, sims = "mean", col.status = TRUE, main = "Prevalence at t1")
+plot(net.sim, type = "network", at = 100, sims = "mean", col.status = TRUE, main = "Prevalence at t100")
+```
+
+# Trying an example
+
+```{r}
+param <- param.net(inf.prob = 0.5)
+init <- init.net(i.num = 10)
+control <- control.net(type = NULL,
+                       nsteps = 100,
+                       nsims = 1,
+                       ncores = 5,
+                       initialize.FUN = new_init_mod,
+                       infection.FUN = new_infect_mod,
+                       prevalence.FUN = prevalence.net,
+                       resimulate.network = FALSE,
+                       skip.check = TRUE,
+                       tergmLite = FALSE,
+                       verbose = FALSE)
+```
+
+
 
