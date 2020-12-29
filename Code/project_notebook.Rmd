@@ -33,6 +33,13 @@ print(summary(as.data.frame(base_network)))
 
 At a first glance, we notice that the network contains 1000 nodes, 100 timesteps, a cross-sectional mean degree that varies stochastically around 0.75, and a naive mean of about 20 timesteps that makes the network dynamic. It it worth mentioning that the density of the network is around 0.0038.
 
+It is worth mentioning that the data contains the following variables :
+* onset : The beginning time point of the relation(or partnership),
+* terminus : The end time point of the relation,
+* tail : the origin vertex,
+* head : the terminal vertex,
+* duration : the duration of the relation.
+
 Since we have 100 timesteps, we can plot the network at timesteps 20 and 100 to visualize the difference.
 
 ```{r, fig.align='center', fig.width=14, fig.height=8}
@@ -50,12 +57,52 @@ plot(network.extract(base_network,at=100), vertex.col = col2, main = "Prevalence
 legend("bottomright", legend=c("Not Infected", "Infected"), col = my.pal, pch = 19, pt.cex=1.5)
 ```
 
+**TODO FURTHER EXPLORATION ANALYSIS**
+
+*CAN WE MAKE THE VERTICES TRANSPARENT? (Without messing up the colors)*
+*Can we extract subgraphs to explore how the communication between individuals helps spread the disease? (i.e. extract connected vertices)*
+*Can we produce a movie render for the dynamic change in the network using the ndtv package? I could not install it!*
+
+```{r}
+#-- commandline for producing a movie render of the network
+#library(ndtv)
+#render.d3movie(base_network, displaylabels=TRUE, output.mode = "htmlWidget")
+```
+
+
 Plotting the static network at different time steps and over different simulations can show the patterns of partnership formation and infection spread over those partnerships. 
-The color coding emphasizes the spread of the disease across the two time points that we have taken into account. To better visualize the spread of the infection across all timesteps, we will do 
+The color coding emphasizes the spread of the disease across the two time points that we have taken into account.
+
+To better visualize the spread of the infection across all timesteps, we will plot the evolution of the number of diseased individuals for all 100 timestamps.
 
 ```{r, fig.align='center', fig.width=8, fig.height=5}
 #-- compare infection time series
-t = sapply(1:100,function(t){sum(get.vertex.attribute.active(base,'status',at=t)==1)})
-plot(t, col='darkred', type ='l', xlab='timestep', ylab='Number of infected', main = "Evolution of infection")
+t = sapply(1:100, function(t){sum(get.vertex.attribute.active(base,'status',at=t)==1)})
+plot(t, col='darkred', lwd = 2,
+     type ='l', xlab='timestep', 
+     ylab='Number of infected', 
+     main = "Evolution of infected individuals across time")
+```
+
+We can distinguish the well known exponential growth of the number of diseased individuals as a function of time from the above plot.
+
+**Maybe do some further exploratory data analysis like Plot the edge formation over time and Plot the network’s centrality over time?**
+
+Worth mentioning, to model a network with epimodel, we need the following parmeters :
+ * Density : This sets the baseline probability of forming a tie, and is typically included in all models (analogous to an intercept term in a linear model).
+ * Heterogeneity by attribute: This allows the probability of an edge to depend on the nodal attribute “risk” we set up above. In our model, we will use it to set a higher mean degree for a high-risk group. The ERGM term for this is nodefactor. The statistic is the count of the number of ties for members of each attribute value.
+ * Selective mixing by attribute: This allows the probability of an edge to depend on the attributes of both nodes. It is used to capture the level of assortative (or disassortative) mixing between groups. The ERGM term for this is nodematch. The statistic is the count of the number of ties between nodes of the same risk group.
+
+## Modeling a network
+
+Possible models from the epimodel package from the vignette: 
+ * Susceptible-Infectious (SI): A two-state model with a one-way transition from susceptible to infected, and no recovery after infection (e.g. HIV).
+ * Susceptible-Infectious-Susceptible (SIS): A two-state model in which recovery does not induce immunity, so individuals may transition back and forth between the susceptible and infected states (e.g. common cold).
+ * Susceptible-Infectious-Recovered/Immune (SIR): A three-state model with an additional one-way transition from infected to recovered with immunity (e.g. measels or maybe covid but this may be too complex given the simplistic structure of our model).
+
+**maybe we can test the first two with the right parameters?**
+ 
+```{r}
+
 ```
 
