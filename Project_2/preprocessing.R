@@ -13,8 +13,14 @@ library(intergraph)
 others = which(!(protein_net %v% "lethality") %in% c("Unknown", "Lethal", "Non-Lethal"))
 
 # Set selected vertice attributes to "Other"
-set.vertex.attribute(protein_net, "lethality", "Other", others)
+network::set.vertex.attribute(protein_net, "lethality", "Other", others)
 
 # Plot network
 plot(protein_net, vertex.col="lethality")
+plot(asNetwork(protein), vertex.col = "lethality")
 
+# test mixing matrix
+mixingmatrix(protein_net, "lethality")
+
+# Save network
+save(protein_net, file = "protein_net.Rda")

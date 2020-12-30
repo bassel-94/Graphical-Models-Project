@@ -4,7 +4,115 @@ output:
 html_notebook: default
 ---
 
-```{r}
+```{r, include = FALSE}
 rm(list=ls())
+library(network)
+library(igraph)
+library(intergraph)
+library(networkdata)
 ```
 
+## Introduction 
+
+We will analyze the dataset protein that contains PPI.
+
+## Loading data and preprocessing
+
+```{r}
+#-- load data and compute summary statistics
+data(protein)
+g = asNetwork(protein)
+summary(g, print.adj = FALSE)
+```
+
+After the general network information, we notice that we need to perform some preprocessing to make the attributes clearer. We are mainly interested in the lethality attribute. Therefore, the most important values of said attribute are lethal, non-lethal, unknown and other where other will represent all the unamed proteins in the network.
+
+After the preprocessing step, we compute the basic summary statistics again and do plots to visualize the network.
+
+```{r, fig.align='center', fig.width=10, fig.height=10, warning = FALSE}
+#-- preprocessing steps to avoid having many clusters
+load("protein_net.Rda")
+
+#-- summary stats
+summary(protein_net, print.adj = FALSE)
+```
+
+Descriptive statistics shows that we have three attributes in the network. The number, the group and lethality. Both number and group attributes are not of interest to us for this project and we will, therefore, focus on the lethality. It is worth mentioning that the density of the model is around 0.002.
+
+## Exploring the network data
+
+As with all statistical modeling, data exploration is advised prior to network model development. In the case of network data, visualization and descriptive statistics can give some insight into the structure of a network that can be helpful during the development and evaluation of a statistical model. The first thing we will do is a visualization of the network with node color showing the lethality attribute which can aid in identifying patterns of ties among proteins with different characteristics.
+
+```{r, fig.align='center', fig.width=10, fig.height=10, warning = FALSE}
+#-- set color palette
+library(RColorBrewer)
+my.pal = brewer.pal(length(unique(protein_net%v%"lethality")),"Set1")
+l = my.pal[as.factor(protein_net%v%"lethality")]
+
+#-- plotting network with colors according to lethality
+set.seed(123)
+plot(protein_net, vertex.col = l, edge.col = "grey40", main = "Interaction among the proteins", vertex.cex =0.7)
+legend("bottomright", legend=c("Unknown", "Non-Lethal", "Lethal", "Other"), col = my.pal, pch = 19, pt.cex=2)
+```
+Preliminary visual analysis of the network graphic show that most proteins in the network and Non lethal and many of them are not clustered towards the center (i.e. on the outskirts of the network with no edges). More clustering formations are noticable towards the center of the graph but we cannot easily distinguish the groups that are clustered together. We can also note that we seem to have much less lethal proteins (colored green) then non lethal ones.
+
+Having a large number of nodes in the network can sometimes obscure important patterns in a network graph. Displaying the largest component (i.e. largest connected group of nodes) in a network can aid in clarifying patterns visually. The largest component which contains most of the nodes in the network can be isolated and graphed. The below graph helps distinguish some more apparent clusterings among the proteins. Some small clusters of non lethal proteins are seen (along with some unknown and other proteins) indicating a potential 
+
+```{r, fig.align='center', fig.width=10, fig.height=10, warning = FALSE}
+prot_comp = component.largest(protein_net)
+prot_small = protein_net[prot_comp,prot_comp]
+smallnet = as.network(prot_small, directed=FALSE)
+
+lethality = network::get.vertex.attribute( protein_net, 'lethality')
+sub_lethality = as.vector(subset(lethality, prot_comp!="FALSE"))
+
+smallnet %v% "lethality" <- sub_lethality
+
+l = my.pal[as.factor(smallnet%v%"lethality")]
+plot( smallnet, vertex.col = l, edge.col = "grey40", main = "Interaction among the proteins with different sizes", vertex.cex =0.7)
+legend("bottomright", legend=c("Unknown", "Non-Lethal", "Lethal", "Other"), col = my.pal, pch = 19, pt.cex=2)
+```
+
+Vertex size is anoother ways to visually discern patterns in our network structure. Therefore, the last visual exploratory analysis that we will perform is a plot where the network is colored according to lethality of the proteins and their corresponding vertices would be sized according to a specific measure like the degree. Degree is the number of links a network member has. In this case, degree would represent the number of ties for each pair of proteins in the protein network. In order to avoid a plot where we obtain a very large node sizes that overlap and obscure the ties, the size of the nodes can be reduced by reducing the values of degree in the attribute by a facor of 20.
+
+Indeed, we can clearly discern the big nodes that correspond to the non leathal proteins indicating higher degree and, by interpretation, higher probability of forming a tie with other proteins. A single big green component of a leathal protein can also be spotted in the graph, indicating a bias towards forming ties when proteins as marked as lethal. To what class of proteins the lethal ones have a tendency to form ties with remains, at this stage, unexplored. Later data exploration techniques will help bring to light these patterns.
+
+```{r, fig.align='center', fig.width=10, fig.height=10, warning = FALSE}
+n = degree(protein_net, gmode='graph')
+protein_net %v% "n" = n
+
+plot(protein_net, vertex.col = l, edge.col = "grey40", main = "Interaction among the proteins", vertex.cex = n/20)
+legend("bottomright", legend=c("Unknown", "Non-Lethal", "Lethal", "Other"), col = my.pal, pch = 19, pt.cex=2)
+```
+
+In addition to visualization, examining network and node characteristics can provide some insight into network structures and possible modeling strategies. Network size and density were shown before in the summary statistics; the average number of links per node (mean degree), the frequency of each degree value.
+
+*HERE WE INCLUDE MICHAEL'S PLOTS*
+
+The LHD network had an average degree of *X* with a standard deviation of *SD* indicating that proteins are connected to, and therefore linked with, an average of *X* other proteins.
+
+The network visualizations above showed some potential clustering; another option for identifying clustering is to examine mixing matrices and correlation coefficients. Mixing matrices can be used to examine the number of connected dyads (pairs of proteins in our case) for each possible combination of levels for a categorical node attribute. For example, how many connected dyads have both proteins classified as non-lethal or is there some clustering between lethal proteins and non-lethal ones? We already found some evidence of clustering by different levels of lethality and a mixing matrix can help to confirm these patterns.
+
+```{r}
+mixingmatrix(protein_net, "lethality")
+```
+
+Indeed, we can notice a bias towards forming ties between proteins when they are both labeled non-lethal. Interestingly, we observe a high number of diads forming between non-lethal and lethal. More in detail, of the 1787 connected dyads including a lethal protein, about 25% (451 proteins) are linked with ones that are also classified as lethal. However, a much higher number of links are formed with non-lethal proteins. The average number of links for each experience category can be calculated and plotted to further examine the relationship between lethality and network structure.
+
+```{r, fig.align='center', fig.width=8, fig.height=6}
+#-- means to plot
+m = tapply(n, lethality, mean)
+
+#-- plot the average links per lethality
+plot(m, type = "b", 
+     col = "blue4",
+     axes = FALSE, 
+     ylab="Average links", 
+     xlab="Lethality level",
+     main ="Relationship between lethality and links")
+axis(1, at=1:4, lab=c("Lethal", "Non-lethal", "Other", "Unknown"))
+axis(2)
+box()
+```
+
+It appears that lethal proteins have a higher of forming links then non-lethal proteins but no apparent strong correlation is visible from this analysis. In the next section, we will fit models accordingly to better explore the correlations.
