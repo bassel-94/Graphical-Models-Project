@@ -159,7 +159,7 @@ nw = network::set.vertex.attribute(nw, "risk", rep(0:1, each = 500))
 formation = ~ edges + nodefactor("risk") + nodematch("risk") + concurrent
 
 #-- set target statistics based on the tutorial in the vignette of epimodel. Note that the value of nodematch is not well studied
-target.stats = c(250, 371, 225, 180)
+target.stats = c(250, 371, 225, 100)
 
 #-- ERGM dissolution coefficients
 coef.diss = dissolution_coefs(dissolution = ~ offset(edges), duration = 100)
@@ -175,7 +175,7 @@ est1 = netest(nw, formation, target.stats, coef.diss)
 Here we will examine dynamic diagnostics only. These are run with the netdx function, which simulates from the model fit object returned by netest. We simulate from the model 10 times over 1000 time steps.
 
 ```{r}
-dx = netdx(est1, nsims = 10, nsteps = 1000)
+dx = netdx(est1, nsims = 1, nsteps = 1000)
 dx
 ```
 
@@ -196,13 +196,13 @@ For initial conditions, we use the i.num argument to set the initial number infe
 
 ```{r}
 init = init.net(i.num = 1)
-param = param.net(inf.prob = 1, act.rate = 20, rec.rate = 0)
+param = param.net(inf.prob = 1, act.rate = 200, rec.rate = 0)
 ```
 
 The control settings contain the structural features of the model, which include the epidemic type, number of time steps per simulation, and number of simulations. The epi.by argument allows us to pass in a categorical nodal attribute which will be used to stratify the prevalence outcome statistics.
 
 ```{r}
-control = control.net(type = "SIS", nsteps = 100, nsims = 10, epi.by = "risk")
+control = control.net(type = "SIS", nsteps = 100, nsims = 1, epi.by = "risk")
 ```
 
 Once all of the necessary model specifications have been set, we simulate and plot the network.
@@ -237,21 +237,93 @@ plot(net.sim, type = "network", at = 100, sims = "mean", col.status = TRUE, main
 
 # Trying an example
 
-```{r}
-param <- param.net(inf.prob = 0.5)
-init <- init.net(i.num = 10)
-control <- control.net(type = NULL,
-                       nsteps = 100,
-                       nsims = 1,
-                       ncores = 5,
-                       initialize.FUN = new_init_mod,
-                       infection.FUN = new_infect_mod,
-                       prevalence.FUN = prevalence.net,
-                       resimulate.network = FALSE,
-                       skip.check = TRUE,
-                       tergmLite = FALSE,
-                       verbose = FALSE)
+```{r, fig.align='center', fig.width=14, fig.height=8}
+#-- setting parameters for the model
+params.base = list(sim.length = 100,
+                   size = 1000,
+                   mean.deg = .75,
+                   mean.rel.dur = 25,
+                   net = network.initialize(1000, directed = F),
+                   formation = ~edges,
+                   dissolution = ~offset(edges))
+
+#-- function for estimating stergm, simulating network, and simulating epidemic
+net.init <- function(params, nsims, adjust=F) {
+  for (name in names(params)) assign(name, params[[name]])
+  message('network init')
+  
+  # generate initial network (defaults if not specified in params)
+  if (!exists('net', inherits=F)) {
+    net <- network.initialize(size,directed=F)
+    net
+  }
+  
+  if (!exists('formation', inherits=F)) {
+    formation = ~edges
+  }
+  
+  if (!exists('dissolution', inherits=F)) {
+    dissolution = ~offset(edges)
+  }
+  
+  if (!is.null(mean.deg)) {
+    target.edges <- size/2 * mean.deg
+    density = target.edges / choose(size,2)
+  } 
+  
+  else {
+    target.edges <- round(density*choose(size, 2))
+  }
+  
+  print(target.edges)
+  
+  if (adjust) target.edges = target.edges*adjust
+  
+  # target stats that does not include edges
+  if (exists('targets', inherits=F)) {
+    target.stats = c(target.edges, targets)
+  }
+  
+  else {
+    target.stats = target.edges
+  }
+  
+  coef.diss <- dissolution_coefs(dissolution, mean.rel.dur)
+  
+  # estimate the stergm
+  net.est = netest(net, formation, target.stats, coef.diss, set.control.ergm=control.ergm(MCMLE.maxit=200))
+  stats.form = update(formation, ~.+concurrent)
+  
+  # simulate the dynamic network
+  # simulate the network dynamics and the epidemic
+  net.sim = netsim(net.est,
+                   param.net(inf.prob=1),
+                   init.net(i.num=1),
+                   control.net(type='SI',
+                               nsteps = sim.length,
+                               nsims=nsims,
+                               keep.network = TRUE))
+  return(list(get_network(net.sim, sim = 1), net.est))
+}
+
+test = net.init(params.base, 1)
+estimated_network = test[[2]]
+estimation_disease = test[[1]]
+
+col2 = my.pal[as.factor(get.vertex.attribute.active(estimation_disease,'status',at=1))]
+plot(network.extract(estimation_disease,at=10), main = "Prevalence at timestep 1")
+plot(network.extract(estimation_disease,at=20), main = "Prevalence at timestep 20")
 ```
 
 
+```{r}
+diag = netdx(estimated_network, nsims = 3, nsteps = 1000)
+plot(diag)
+```
+
+```{r}
+par(mfrow = c(1, 2))
+plot(diag, type = "duration")
+plot(diag, type = "dissolution")
+```
 
