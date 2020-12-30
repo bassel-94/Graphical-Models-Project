@@ -1,0 +1,150 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+### Degree distribution
+
+```{r}
+rm(list=ls())
+library(networkdata)
+library(intergraph)
+library(network)
+library(igraph)
+
+# Load data
+data(protein)
+protein = simplify(protein, remove.multiple = TRUE, remove.loops = FALSE)
+```
+
+```{r}
+# Select vertices with different lethality name
+others = which(!(igraph::vertex_attr(protein, "lethality") %in% c("Unknown", "Lethal", "Non-Lethal")))
+
+# Set selected vertice attributes to "Other"
+protein = set_vertex_attr(protein, "lethality", others, "Other")
+
+# Save a network object of protein dataset as well
+protein_net = asNetwork(protein)
+```
+
+Let's visualize the degree distribution of the protein dataset.
+```{r}
+library(ggplot2)
+protein.degrees.df = data.frame(degree = degree(protein))
+
+ggplot(protein.degrees.df) + 
+  ggtitle("Degree distribution of protein dataset") + 
+  aes(degree) + geom_histogram(binwidth = 2)
+```
+
+The protein structure of yeast contains a main graph where most proteins interact and lots of proteins that have no interaction whatsoever. Let's take a look at the main graph
+```{r}
+dprotein <- decompose.graph(protein, mode="strong", min.vertices = 2)
+main.interaction = dprotein[[1]]
+
+l = layout_with_fr(main.interaction)
+deg = degree(main.interaction, mode="all")
+plot(main.interaction, layout=layout_with_lgl, vertex.size=deg/5, vertex.label=NA)
+```
+
+```{r}
+main.interaction.degrees.df = data.frame(degree = degree(main.interaction))
+
+ggplot(main.interaction.degrees.df) + 
+  ggtitle("Degree distribution of main graph") + 
+  aes(degree) + geom_histogram(binwidth = 2)
+```
+```{r}
+summary(degree(main.interaction))
+```
+
+```{r}
+N.v = as.numeric(vcount(main.interaction))
+N.e = ecount(main.interaction)
+```
+
+```{r}
+er.g = erdos.renyi.game(N.v, N.e, type="gnm")
+ba.g =  barabasi.game(N.v)
+```
+
+```{r}
+communities = fastgreedy.community(main.interaction)
+communities
+```
+
+#### Small world
+Does our main interaction graph has a small world property? In order to find that out we need to look at:
+* Diameter (max length)
+* Average shortest path length
+* Clustering coefficient
+
+```{r}
+# Diameter
+diameter(main.interaction)
+
+# Average shortest path
+sp = shortest.paths(main.interaction)
+mean(sp[row(sp) != col(sp)])
+
+# Clustering coefficient
+transitivity(main.interaction)
+```
+
+
+These numbers don't tell us a lot, so we need to compare them to an for example random world.
+```{r}
+ntrials = 1000
+
+num.dia.er = numeric(ntrials)
+num.sp.er = numeric(ntrials)
+num.clust.er = numeric(ntrials)
+
+for (i in 1:ntrials) {
+  er.g = erdos.renyi.game(N.v, N.e, type="gnm") 
+  
+  # Diameter
+  num.dia.er[i] = diameter(er.g)
+  
+  # Shortest path (NA)
+  sp = shortest.paths(er.g)
+  sp[is.infinite(sp)] = NA
+  num.sp.er[i] = mean(sp[row(sp) != col(sp)], na.rm = TRUE)
+  
+  # Clustering coefficient
+  num.clust.er[i] = transitivity(er.g)
+}
+```
+
+Diameter is longer than random graph. So is the clustering coefficient. We find that the mean shortest path of 
+
+```{r}
+sp = shortest.paths(main.interaction)
+
+hist(num.sp.er)
+abline(v = mean(sp[row(sp) != col(sp)]))
+
+hist(num.clust.er, xlim = c(0,0.06))
+abline(v=transitivity(main.interaction))
+
+hist(num.dia.er, 10)
+abline(v=diameter(main.interaction))
+```
+We have a lot more clusters than a random graph.
+
+```{r}
+ntrials = 1000
+num.clust.er = numeric(ntrials)
+
+for (i in 1:ntrials) {
+  er.g = erdos.renyi.game(vcount(protein), ecount(protein), type="gnm") 
+  
+  num.clust.er[i] = clusters(er.g)$no
+}
+
+mean(num.clust.er)
+clusters(protein)$no
+```
+WE HAVE A SMALL WORLD! WOO
+
