@@ -21,23 +21,34 @@ We will analyze the dataset protein that contains PPI.
 ```{r}
 #-- load data and compute summary statistics
 data(protein)
+protein = simplify(protein, remove.multiple = TRUE, remove.loops = FALSE)
 g = asNetwork(protein)
 summary(g, print.adj = FALSE)
 ```
 
 After the general network information, we notice that we need to perform some preprocessing to make the attributes clearer. We are mainly interested in the lethality attribute. Therefore, the most important values of said attribute are lethal, non-lethal, unknown and other where other will represent all the unamed proteins in the network.
 
+We do the following preprocessing to avoid having many clusters.
+
+```{r}
+# Select vertices with different lethality name
+others = which(!(igraph::vertex_attr(protein, "lethality") %in% c("Unknown", "Lethal", "Non-Lethal")))
+
+# Set selected vertice attributes to "Other"
+protein = set_vertex_attr(protein, "lethality", others, "Other")
+
+# Save a network object of protein dataset as well
+protein_net = asNetwork(protein)
+```
+
 After the preprocessing step, we compute the basic summary statistics again and do plots to visualize the network.
 
-```{r, fig.align='center', fig.width=10, fig.height=10, warning = FALSE}
-#-- preprocessing steps to avoid having many clusters
-load("protein_net.Rda")
-
+```{r}
 #-- summary stats
 summary(protein_net, print.adj = FALSE)
 ```
 
-Descriptive statistics shows that we have three attributes in the network. The number, the group and lethality. Both number and group attributes are not of interest to us for this project and we will, therefore, focus on the lethality. It is worth mentioning that the density of the model is around 0.002.
+Descriptive statistics shows that we have three attributes in the network. The number, the group and lethality. Both number and group attributes are not of interest to us for this project and we will, therefore, focus on the lethality. It is worth mentioning that the density of the model is around 0.001.
 
 ## Exploring the network data
 
@@ -51,9 +62,12 @@ l = my.pal[as.factor(protein_net%v%"lethality")]
 
 #-- plotting network with colors according to lethality
 set.seed(123)
+jpeg(file="Main_Network.jpeg", width=700, height=700)
 plot(protein_net, vertex.col = l, edge.col = "grey40", main = "Interaction among the proteins", vertex.cex =0.7)
 legend("bottomright", legend=c("Unknown", "Non-Lethal", "Lethal", "Other"), col = my.pal, pch = 19, pt.cex=2)
+dev.off()
 ```
+
 Preliminary visual analysis of the network graphic show that most proteins in the network and Non lethal and many of them are not clustered towards the center (i.e. on the outskirts of the network with no edges). More clustering formations are noticable towards the center of the graph but we cannot easily distinguish the groups that are clustered together. We can also note that we seem to have much less lethal proteins (colored green) then non lethal ones.
 
 Having a large number of nodes in the network can sometimes obscure important patterns in a network graph. Displaying the largest component (i.e. largest connected group of nodes) in a network can aid in clarifying patterns visually. The largest component which contains most of the nodes in the network can be isolated and graphed. The below graph helps distinguish some more apparent clusterings among the proteins. Some small clusters of non lethal proteins are seen (along with some unknown and other proteins) indicating a potential 
@@ -69,8 +83,10 @@ sub_lethality = as.vector(subset(lethality, prot_comp!="FALSE"))
 smallnet %v% "lethality" <- sub_lethality
 
 l = my.pal[as.factor(smallnet%v%"lethality")]
+jpeg(file="Main_components_Network.jpeg", width=700, height=700)
 plot( smallnet, vertex.col = l, edge.col = "grey40", main = "Interaction among the proteins with different sizes", vertex.cex =0.7)
 legend("bottomright", legend=c("Unknown", "Non-Lethal", "Lethal", "Other"), col = my.pal, pch = 19, pt.cex=2)
+dev.off()
 ```
 
 Vertex size is anoother ways to visually discern patterns in our network structure. Therefore, the last visual exploratory analysis that we will perform is a plot where the network is colored according to lethality of the proteins and their corresponding vertices would be sized according to a specific measure like the degree. Degree is the number of links a network member has. In this case, degree would represent the number of ties for each pair of proteins in the protein network. In order to avoid a plot where we obtain a very large node sizes that overlap and obscure the ties, the size of the nodes can be reduced by reducing the values of degree in the attribute by a facor of 20.
@@ -81,8 +97,19 @@ Indeed, we can clearly discern the big nodes that correspond to the non leathal 
 n = degree(protein_net, gmode='graph')
 protein_net %v% "n" = n
 
-plot(protein_net, vertex.col = l, edge.col = "grey40", main = "Interaction among the proteins", vertex.cex = n/20)
+jpeg(file="Main_Network_with_size.jpeg", width=700, height=700)
+plot(protein_net, vertex.col = l, edge.col = "grey40", main = "Interaction among the proteins", vertex.cex = n/10)
 legend("bottomright", legend=c("Unknown", "Non-Lethal", "Lethal", "Other"), col = my.pal, pch = 19, pt.cex=2)
+dev.off()
+```
+
+```{r, fig.align='center', fig.width=10, fig.height=10}
+dprotein = decompose.graph(protein, mode="strong", min.vertices = 2)
+main.interaction = dprotein[[1]]
+
+l = layout_with_fr(main.interaction)
+deg = igraph::degree(main.interaction, mode="all")
+plot(main.interaction, layout=layout_with_lgl, vertex.size=deg/5, vertex.label=NA)
 ```
 
 In addition to visualization, examining network and node characteristics can provide some insight into network structures and possible modeling strategies. Network size and density were shown before in the summary statistics; the average number of links per node (mean degree), the frequency of each degree value.
@@ -104,6 +131,7 @@ Indeed, we can notice a bias towards forming ties between proteins when they are
 m = tapply(n, lethality, mean)
 
 #-- plot the average links per lethality
+jpeg(file="avg_link_lethality.jpeg", width=600, height=400)
 plot(m, type = "b", 
      col = "blue4",
      axes = FALSE, 
@@ -113,6 +141,7 @@ plot(m, type = "b",
 axis(1, at=1:4, lab=c("Lethal", "Non-lethal", "Other", "Unknown"))
 axis(2)
 box()
+dev.off()
 ```
 
 It appears that lethal proteins have a higher of forming links then non-lethal proteins but no apparent strong correlation is visible from this analysis. In the next section, we will fit models accordingly to better explore the correlations.

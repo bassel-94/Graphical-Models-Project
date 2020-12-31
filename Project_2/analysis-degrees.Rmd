@@ -1,6 +1,7 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output:
+html_notebook: default
 ---
 
 ### Degree distribution
@@ -31,32 +32,39 @@ protein_net = asNetwork(protein)
 Let's visualize the degree distribution of the protein dataset.
 ```{r}
 library(ggplot2)
-protein.degrees.df = data.frame(degree = degree(protein))
+protein.degrees.df = data.frame(degree = igraph::degree(protein))
 
+jpeg(file="degree_distribution.jpeg", width=600, height=400)
 ggplot(protein.degrees.df) + 
   ggtitle("Degree distribution of protein dataset") + 
-  aes(degree) + geom_histogram(binwidth = 2)
+  aes(degree) + geom_histogram(binwidth = 2) + theme_bw()
+dev.off()
 ```
 
 The protein structure of yeast contains a main graph where most proteins interact and lots of proteins that have no interaction whatsoever. Let's take a look at the main graph
-```{r}
-dprotein <- decompose.graph(protein, mode="strong", min.vertices = 2)
+
+```{r, fig.align='center', fig.width=10, fig.height=10, warning = FALSE}
+dprotein = decompose.graph(protein, mode="strong", min.vertices = 2)
 main.interaction = dprotein[[1]]
 
 l = layout_with_fr(main.interaction)
-deg = degree(main.interaction, mode="all")
+deg = igraph::degree(main.interaction, mode="all")
+
+jpeg(file="Network_with_decomposition.jpeg", width=700, height=700)
 plot(main.interaction, layout=layout_with_lgl, vertex.size=deg/5, vertex.label=NA)
+dev.off()
 ```
 
 ```{r}
-main.interaction.degrees.df = data.frame(degree = degree(main.interaction))
+main.interaction.degrees.df = data.frame(degree = igraph::degree(main.interaction))
 
 ggplot(main.interaction.degrees.df) + 
   ggtitle("Degree distribution of main graph") + 
-  aes(degree) + geom_histogram(binwidth = 2)
+  aes(degree) + geom_histogram(binwidth = 2) + theme_bw()
 ```
+
 ```{r}
-summary(degree(main.interaction))
+summary(igraph::degree(main.interaction))
 ```
 
 ```{r}
@@ -75,6 +83,7 @@ communities
 ```
 
 #### Small world
+
 Does our main interaction graph has a small world property? In order to find that out we need to look at:
 * Diameter (max length)
 * Average shortest path length
@@ -92,8 +101,8 @@ mean(sp[row(sp) != col(sp)])
 transitivity(main.interaction)
 ```
 
-
 These numbers don't tell us a lot, so we need to compare them to an for example random world.
+
 ```{r}
 ntrials = 1000
 
