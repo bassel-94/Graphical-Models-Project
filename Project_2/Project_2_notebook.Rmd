@@ -50,6 +50,7 @@ summary(protein_net, print.adj = FALSE)
 
 Descriptive statistics shows that we have three attributes in the network. The number, the group and lethality. Both number and group attributes are not of interest to us for this project and we will, therefore, focus on the lethality. It is worth mentioning that the density of the model is around 0.001.
 
+
 ## Exploring the network data
 
 As with all statistical modeling, data exploration is advised prior to network model development. In the case of network data, visualization and descriptive statistics can give some insight into the structure of a network that can be helpful during the development and evaluation of a statistical model. The first thing we will do is a visualization of the network with node color showing the lethality attribute which can aid in identifying patterns of ties among proteins with different characteristics.
@@ -64,28 +65,36 @@ l = my.pal[as.factor(protein_net%v%"lethality")]
 set.seed(123)
 jpeg(file="Main_Network.jpeg", width=700, height=700)
 plot(protein_net, vertex.col = l, edge.col = "grey40", main = "Interaction among the proteins", vertex.cex =0.7)
-legend("bottomright", legend=c("Unknown", "Non-Lethal", "Lethal", "Other"), col = my.pal, pch = 19, pt.cex=2)
+legend("bottomright", legend=c("Lethal", "Non-Lethal", "Other", "Unknown"), col = my.pal, pch = 19, pt.cex=2)
 dev.off()
+```
+
+The following table shows the frequency distribution of the different levels of lethality in the network. 
+
+```{r, echo = FALSE}
+knitr::kable(
+  table(as.factor(protein_net%v%"lethality")), caption = 'Frequency table of the attribute lethality'
+)
 ```
 
 Preliminary visual analysis of the network graphic show that most proteins in the network and Non lethal and many of them are not clustered towards the center (i.e. on the outskirts of the network with no edges). More clustering formations are noticable towards the center of the graph but we cannot easily distinguish the groups that are clustered together. We can also note that we seem to have much less lethal proteins (colored green) then non lethal ones.
 
 Having a large number of nodes in the network can sometimes obscure important patterns in a network graph. Displaying the largest component (i.e. largest connected group of nodes) in a network can aid in clarifying patterns visually. The largest component which contains most of the nodes in the network can be isolated and graphed. The below graph helps distinguish some more apparent clusterings among the proteins. Some small clusters of non lethal proteins are seen (along with some unknown and other proteins) indicating a potential 
 
-```{r, fig.align='center', fig.width=10, fig.height=10, warning = FALSE}
+```{r, fig.align='center', fig.width=10, fig.height=10}
 prot_comp = component.largest(protein_net)
 prot_small = protein_net[prot_comp,prot_comp]
-smallnet = as.network(prot_small, directed=FALSE)
+smallnet = as.network(prot_small, directed=FALSE, remove.loops = FALSE )
 
 lethality = network::get.vertex.attribute( protein_net, 'lethality')
 sub_lethality = as.vector(subset(lethality, prot_comp!="FALSE"))
 
-smallnet %v% "lethality" <- sub_lethality
+smallnet %v% "lethality" = sub_lethality
 
 l = my.pal[as.factor(smallnet%v%"lethality")]
 jpeg(file="Main_components_Network.jpeg", width=700, height=700)
-plot( smallnet, vertex.col = l, edge.col = "grey40", main = "Interaction among the proteins with different sizes", vertex.cex =0.7)
-legend("bottomright", legend=c("Unknown", "Non-Lethal", "Lethal", "Other"), col = my.pal, pch = 19, pt.cex=2)
+plot( smallnet, vertex.col = l, edge.col = "grey40", main = "Interaction among the proteins with different sizes", vertex.cex = degree(smallnet, gmode='graph')/10)
+legend("bottomright", legend=c("Lethal", "Non-Lethal", "Other", "Unknown"), col = my.pal, pch = 19, pt.cex=2)
 dev.off()
 ```
 
@@ -99,7 +108,7 @@ protein_net %v% "n" = n
 
 jpeg(file="Main_Network_with_size.jpeg", width=700, height=700)
 plot(protein_net, vertex.col = l, edge.col = "grey40", main = "Interaction among the proteins", vertex.cex = n/10)
-legend("bottomright", legend=c("Unknown", "Non-Lethal", "Lethal", "Other"), col = my.pal, pch = 19, pt.cex=2)
+legend("bottomright", legend=c("Lethal", "Non-Lethal", "Other", "Unknown"), col = my.pal, pch = 19, pt.cex=2)
 dev.off()
 ```
 

@@ -1,0 +1,137 @@
+---
+title: "Studying the effect of lethality on protein-protein interactions in Yeast"
+author: "Michael DARMOUTOMO and Bassel MASRI"
+date: "1/1/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction and research quesion
+
+Protein–protein interactions (PPI) are key to protein functions and regulations within the cell cycle, DNA replication, and cellular signaling. Therefore, detecting whether a pair of proteins interact is of great importance for the study of molecular biology. Indeed, the ultimate goal when predicting PPI interactions is to predict the formation of links between them. Furthermore, modeling PPI's have become a key step in the realization of protein function within cell cycle progression, DNA replication, and signal transmission. For our graphical models project, we have chosen to identify the architecture of a yeast PPI network in order to determine if the proteins' interactions are best described by a statistical law or if it is random. Secondly, the data also describes a certain of level of lethality linked to the removal of a protein which can be correlated with the number of iteractions the protein has. Quantifying the effect of lethality on forming links would proove or disproove this correlation which was also the goal of our project through network modeling techniques.
+
+## Methodoly
+
+### Analysis steps
+
+Investigating protein–protein interactions network relate to examine the correlation between forming links and classifying the lethality of a protein. While typial machine learning algorithms such as random forests, neural networks, ensemble classifiers, and Naive Bayes classifiers are often proposed for classification problems and, therefore, detecting lethality of protein when analyzing PPIs datasets, network modeling techniques can offer a significant insight on the interaction between said proteins. Therefore, the steps for analyzing the PPI network start with a typical exploratory data analysis to capture as much information as we can about the network. We then implement numerical sumilations to capture the structure of the network in the aim of quantifying its properties (e.g. random and small world properties) and finally, we fit different models on the network to predict the formation of links based on the network's attributes which would help answer our main research question -is there a statistically significant correlation between the formation of links between proteins and lethality?
+
+### Protein-Protein-Interaction yeast network
+
+For our project, we have chosen the protein network which can be found in the package *networkdata* in R. The protein network was built by Jeong, Mason, Barabasi and Oltvai (2001) who examined a data matrix that contained interactions linking 2114 proteins contained in yeast. Earlier experimental work had demonstrated that some of the protein molecules in yeast were lethal; if they were removed the yeast would die. Removing others, however, had no such dramatic effect. So Jeong et al. examined the question of whether the structural properties of those proteins, in particular their degree centralities, could predict which proteins were lethal and which ones were not.
+
+### Preprocessing step
+
+Upon general descriptive analysis of the network information, we notice that the main attribute we are interested in, lethality, contains more than the following classes; lethal, Non-lethal, Unknown and some other protein interactions that are unclassified. Therefore, the first step in our analysis was to perform some preprocessing to make the attributes clearer. The unclassified proteins are put in a class called other which will not be examined in the analysis. The final list of attributes on which we conduct the analysis is the following : 
+
+* Lethal
+* Non-lethal
+* Unknown
+* Other
+
+After running some summary statistics in *R*, we get a graph density of about $0.001$.
+
+## Exploratory Data Analysis
+
+### Visual exploration of the network
+
+As with all statistical modeling, data exploration is advised prior to network model development. In the case of network data, visualization and descriptive statistics can give some insight into the structure of a network that can be helpful during the development and evaluation of a statistical model. The first thing we will do is a visualization of the network with node color showing the lethality attribute which can aid in identifying patterns of ties among proteins with different characteristics.
+
+```{r, include = FALSE, echo = FALSE}
+rm(list=ls())
+library(network)
+library(igraph)
+library(intergraph)
+library(networkdata)
+library(sna)
+library(ggplot2)
+```
+
+```{r net-one, echo = FALSE, fig.align='center', fig.width=6, fig.height=6,  fig.cap= "Network visualization"}
+#-- load data and compute summary statistics
+data(protein)
+protein = simplify(protein, remove.multiple = TRUE, remove.loops = FALSE)
+
+# Select vertices with different lethality name
+others = which(!(igraph::vertex_attr(protein, "lethality") %in% c("Unknown", "Lethal", "Non-Lethal")))
+
+# Set selected vertice attributes to "Other"
+protein = set_vertex_attr(protein, "lethality", others, "Other")
+
+# Save a network object of protein dataset as well
+protein_net = asNetwork(protein)
+
+#-- set color palette
+library(RColorBrewer)
+my.pal = brewer.pal(length(unique(protein_net%v%"lethality")),"Set1")
+l = my.pal[as.factor(protein_net%v%"lethality")]
+
+#-- plotting network with colors according to lethality
+set.seed(123)
+plot(protein_net, vertex.col = l, edge.col = "grey40", main = "Interaction among the proteins", vertex.cex =0.7, cex.main = 0.8)
+legend("bottomright", legend=c("Lethal", "Non-Lethal", "Other", "Unknown"), col = my.pal, pch = 19, pt.cex=0.9, cex = 0.5)
+```
+
+The following table shows the frequency distribution of the different levels of lethality in the network.
+
+```{r tab-one, echo = FALSE}
+knitr::kable(
+  table(as.factor(protein_net%v%"lethality")), caption = 'Frequency table of the attribute lethality', col.names = c("Level", "Count")
+)
+```
+
+Preliminary visual analysis of the network graphic through \@ref(fig:net-one) and \@ref(tab:tab-one) show that most proteins in the network fall under the category of non-lethal and many of them are *not* clustered towards the center (i.e. on the outskirts of the network with no edges) with no apparent edges (or links). More clustering formations are noticable towards the center of the graph but we cannot easily distinguish the groups that are clustered together. We can also note that some lethal proteins, code colored red, have significant interactions with other proteins.
+
+Having a large number of nodes in the network can sometimes obscure important patterns in a network graph. Displaying the largest component (i.e. largest connected group of nodes) in a network can aid in clarifying patterns visually. The largest component which contains most of the nodes in the network can be isolated and graphed. Vertex size is anoother ways to visually discern patterns in our network structure. Therefore, the last visual exploratory analysis that we will perform is a plot where the network is colored according to lethality of the proteins and their corresponding vertices would be sized according to a specific measure like the degree. Degree is the number of links a network member has. In this case, degree would represent the number of ties for each pair of proteins in the protein network. In order to avoid a plot where we obtain a very large node sizes that overlap and obscure the ties, the size of the nodes can be reduced by reducing the values of degree in the attribute by a facor of 10.
+
+\@ref(fig:net-two) below helps distinguish some more apparent clusterings among the proteins by plotting only the main components and sizing the vertices by their degrees. Indeed, we can clearly discern the biggest nodes that correspond to the non-lethal and lethal proteins indicating higher degrees and, by interpretation, higher probability of forming a tie with other proteins. In other words, lethal and non-lethal proteins have high degrees. To what class of proteins have a tendency to form ties with remains, at this stage, unexplored. Later data exploration techniques will help bring these patterns to light.
+
+It is also woth mentioning that clusters of protein classified 'unknown' and 'other' are less significant.
+
+```{r net-two, fig.align='center', fig.width=6, fig.height=6, fig.cap="Network showing main components and size according to their degrees", echo = FALSE, warning=FALSE}
+prot_comp = component.largest(protein_net)
+prot_small = protein_net[prot_comp,prot_comp]
+smallnet = as.network(prot_small, directed=FALSE, remove.loops = FALSE )
+
+lethality = network::get.vertex.attribute( protein_net, 'lethality')
+sub_lethality = as.vector(subset(lethality, prot_comp!="FALSE"))
+
+smallnet %v% "lethality" = sub_lethality
+
+l = my.pal[as.factor(smallnet%v%"lethality")]
+plot( smallnet, vertex.col = l, edge.col = "grey40", main = "Interaction among the proteins with different sizes", vertex.cex = degree(smallnet, gmode='graph')/10, cex.main = 0.8)
+legend("bottomright", legend=c("Lethal", "Non-Lethal", "Other", "Unknown"), col = my.pal, pch = 19, pt.cex=0.9, cex = 0.5)
+```
+
+### Descriptive analysis of the network 
+
+In addition to visualization, examining network and node characteristics can provide some insight into network structures and possible modeling strategies. Network size and density have been discussed earlier in the introduction. In this section, we will focus on the average number of links per node (mean degree), the frequency of each degree value.
+
+We will first look at a visual representation of the degree distribution of the PPI network.
+
+```{r hist, fig.align='center', fig.width=5, fig.height=3.5, fig.cap="Degree distribution of the proteins", echo = FALSE, warning=FALSE }
+protein.degrees.df = data.frame(degree = igraph::degree(protein))
+ggplot(protein.degrees.df) + 
+  ggtitle("Degree distribution of protein dataset") + 
+  aes(degree) + geom_histogram(binwidth = 2) + theme_bw()
+```
+
+```{r tab-two, echo = FALSE}
+df = data.frame(unclass(summary(igraph::degree(protein))))
+knitr::kable(df, caption = 'Summary statistics of the degree distribution of PPI network', col.names = c("Value"))
+```
+
+
+## Modeling and predicting probabilities
+
+## Conclusion
+
+Knowledge about how they interact can lead to better understanding of a great many diseases and it can help in the design of appropriate therapies. 
+Results showed that proteins of high degree were far more likely to be lethal than those of lower degree.
+
+
