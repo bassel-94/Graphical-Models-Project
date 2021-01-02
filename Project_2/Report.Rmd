@@ -85,11 +85,15 @@ knitr::kable(
 )
 ```
 
-Preliminary visual analysis of the network graphic through \@ref(fig:net-one) and \@ref(tab:tab-one) show that most proteins in the network fall under the category of non-lethal and many of them are *not* clustered towards the center (i.e. on the outskirts of the network with no edges) with no apparent edges (or links). More clustering formations are noticable towards the center of the graph but we cannot easily distinguish the groups that are clustered together. We can also note that some lethal proteins, code colored red, have significant interactions with other proteins.
+Preliminary visual analysis of the network graphic through \ref{fig:net-one} and \ref{tab:tab-one} show that most proteins in the network fall under the category of non-lethal and many of them are *not* clustered towards the center (i.e. on the outskirts of the network with no edges) with no apparent edges (or links). More clustering formations are noticable towards the center of the graph but we cannot easily distinguish the groups that are clustered together. We can also note that some lethal proteins, code colored red, have significant interactions with other proteins.
 
-Having a large number of nodes in the network can sometimes obscure important patterns in a network graph. Displaying the largest component (i.e. largest connected group of nodes) in a network can aid in clarifying patterns visually. The largest component which contains most of the nodes in the network can be isolated and graphed. Vertex size is anoother ways to visually discern patterns in our network structure. Therefore, the last visual exploratory analysis that we will perform is a plot where the network is colored according to lethality of the proteins and their corresponding vertices would be sized according to a specific measure like the degree. Degree is the number of links a network member has. In this case, degree would represent the number of ties for each pair of proteins in the protein network. In order to avoid a plot where we obtain a very large node sizes that overlap and obscure the ties, the size of the nodes can be reduced by reducing the values of degree in the attribute by a facor of 10.
+Having a large number of nodes in the network can sometimes obscure important patterns in a network graph. Displaying the largest component (i.e. largest connected group of nodes) in a network can aid in clarifying patterns visually. The largest component which contains most of the nodes in the network can be isolated and graphed. 
 
-\@ref(fig:net-two) below helps distinguish some more apparent clusterings among the proteins by plotting only the main components and sizing the vertices by their degrees. Indeed, we can clearly discern the biggest nodes that correspond to the non-lethal and lethal proteins indicating higher degrees and, by interpretation, higher probability of forming a tie with other proteins. In other words, lethal and non-lethal proteins have high degrees. To what class of proteins have a tendency to form ties with remains, at this stage, unexplored. Later data exploration techniques will help bring these patterns to light.
+Vertex size is anoother ways to visually discern patterns in our network structure. Therefore, the last visual exploratory analysis that we will perform is a plot where the network is colored according to lethality of the proteins and their corresponding vertices would be sized according to a specific measure like the degree. Degree is the number of links a network member has. In this case, degree would represent the number of ties for each pair of proteins in the protein network. 
+
+In order to avoid a plot where we obtain a very large node sizes that overlap and obscure the ties, the size of the nodes can be reduced by reducing the values of degree in the attribute by a facor of 10.
+
+Figure \ref{fig:net-two} below helps distinguish some more apparent clusterings among the proteins by plotting only the main components and sizing the vertices by their degrees. Indeed, we can clearly discern the biggest nodes that correspond to the non-lethal and lethal proteins indicating higher degrees and, by interpretation, higher probability of forming a tie with other proteins. In other words, lethal and non-lethal proteins have high degrees. To what class of proteins have a tendency to form ties with remains, at this stage, unexplored. Later data exploration techniques will help bring these patterns to light.
 
 It is also woth mentioning that clusters of protein classified 'unknown' and 'other' are less significant.
 
@@ -108,30 +112,75 @@ plot( smallnet, vertex.col = l, edge.col = "grey40", main = "Interaction among t
 legend("bottomright", legend=c("Lethal", "Non-Lethal", "Other", "Unknown"), col = my.pal, pch = 19, pt.cex=0.9, cex = 0.5)
 ```
 
-### Descriptive analysis of the network 
+### Descriptive analysis of the network
 
-In addition to visualization, examining network and node characteristics can provide some insight into network structures and possible modeling strategies. Network size and density have been discussed earlier in the introduction. In this section, we will focus on the average number of links per node (mean degree), the frequency of each degree value.
+#### Degree distribution
 
-We will first look at a visual representation of the degree distribution of the PPI network.
+In addition to visualization, examining network and node characteristics can provide some insight into network structures and possible modeling strategies. Network size and density have been discussed earlier in the introduction. In this section, we will focus on the average number of links per node (mean degree), through a histogram describing the distribution along with a summary statistics table for a better quantitative description.
+
+Indeed, like any real world dataset, we see through figure \ref{fig:hist} and tabel \ref{tab:tab-two} that most nodes do not interact woth other nodes indicating that proteins mostly do not interact with each other. The degree distribution histogram also shows that some proteins have a high degree indicating the bigger nodes seen in graph \ref{fig:net-two} in the PPI network.
+
+The average mean degree is roughly $2.1$ indicating that proteins are connected to, and therefore linked with, an average of *2* other proteins.
 
 ```{r hist, fig.align='center', fig.width=5, fig.height=3.5, fig.cap="Degree distribution of the proteins", echo = FALSE, warning=FALSE }
 protein.degrees.df = data.frame(degree = igraph::degree(protein))
 ggplot(protein.degrees.df) + 
   ggtitle("Degree distribution of protein dataset") + 
-  aes(degree) + geom_histogram(binwidth = 2) + theme_bw()
+  aes(degree) + geom_histogram(binwidth = 2) + theme_bw() + theme(plot.title = element_text(size = 10, face = "bold", hjust = 0.5))
 ```
 
 ```{r tab-two, echo = FALSE}
 df = data.frame(unclass(summary(igraph::degree(protein))))
-knitr::kable(df, caption = 'Summary statistics of the degree distribution of PPI network', col.names = c("Value"))
+knitr::kable(round(df,1), caption = 'Summary statistics of the degree distribution of PPI network', col.names = c("Value"))
 ```
 
+#### Mixing matrix
+
+The network visualizations above showed some potential clustering; another option for identifying clustering is to examine mixing matrices and correlation coefficients. Mixing matrices can be used to examine the number of connected dyads (pairs of proteins in our case) for each possible combination of levels for a categorical node attribute. For example, how many connected dyads have both proteins classified as non-lethal or is there some clustering between lethal proteins and non-lethal ones? We already found some evidence of clustering by different levels of lethality and a mixing matrix can help confirm these patterns.
+
+```{r mixmat, echo = FALSE}
+knitr::kable(mixingmatrix(protein_net, "lethality")[[2]])
+```
+
+**REVIEW NUMBERS**
+
+Indeed, the mixing matrix shown in \ref{tab:mixmat} indicates a bias towards forming ties between proteins when they hold different classes (i.e. non-lethal with lethal). More in detail, of the 1787 connected dyads including non-lethal proteins, about 25% (451 proteins) are linked with ones that are also classified as non-lethal. However, a much higher number of links are formed with lethal proteins. This may be an indication that proteins of high degree are more likely to be lethal than those of lower degree.
+
+One way to further explore this finding is through a visual representation of the average number of links for each class of proteins. The latter can help further examine the relationship between lethality and network structure.
+
+```{r rel, fig.align='center', fig.width=5, fig.height=3.5, fig.cap="Average link per protein category", echo=FALSE}
+#-- means to plot
+n = degree(protein_net, gmode='graph')
+m = tapply(n, lethality, mean)
+
+#-- plot the average links per lethality
+plot(sort(m), type = "b", 
+     col = "blue4",
+     axes = FALSE, 
+     ylab="Average links", 
+     xlab="Lethality level",
+     main ="Relationship between lethality and links")
+axis(1, at=1:4, lab=c("Unknown", "Non-lethal", "Other", "Lethal"))
+axis(2)
+box()
+```
+
+Figure \ref{fig:rel} and table \ref{tab:freqt} confirms this finding by showing that lethal proteins have a higher number of links thus indicating that proteins of high degree are indeed more likely to be lethal than those of lower degree.
+
+```{r freqt, echo = FALSE}
+knitr::kable(sort(m), col.names = "Average link")
+```
 
 ## Modeling and predicting probabilities
+
+### Small World simulation
+
+### Exponential random graph modeling
 
 ## Conclusion
 
 Knowledge about how they interact can lead to better understanding of a great many diseases and it can help in the design of appropriate therapies. 
 Results showed that proteins of high degree were far more likely to be lethal than those of lower degree.
+Findings through the exploratory data analysis and the modeling of the network showed consistent results. We were able to extract rich insight from the network analysis of the PPI.
 
 
