@@ -1,0 +1,44 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+### Degree distribution
+
+```{r}
+rm(list=ls())
+library(networkdata)
+library(intergraph)
+library(network)
+library(igraph)
+
+# Load data
+data(protein)
+protein = simplify(protein, remove.multiple = TRUE, remove.loops = FALSE)
+```
+
+```{r}
+# Select vertices with different lethality name
+others = which(!(igraph::vertex_attr(protein, "lethality") %in% c("Unknown", "Lethal", "Non-Lethal")))
+
+# Set selected vertice attributes to "Other"
+protein = set_vertex_attr(protein, "lethality", others, "Other")
+
+# Save a network object of protein dataset as well
+protein_net = asNetwork(protein)
+```
+
+```{r}
+library(ergm)
+ergm.fit = ergm(protein_net ~ nodematch("lethality", diff=T) + concurrent + edges)
+summary(ergm.fit)
+```
+
+```{r}
+plogis(ergm.fit$coef[1])
+```
+
+```{r}
+gof.model = gof(ergm.fit)
+plot(gof.model)
+```
