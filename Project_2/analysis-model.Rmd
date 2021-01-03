@@ -1,6 +1,7 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output: 
+html_notebook: default
 ---
 
 ### Degree distribution
@@ -11,10 +12,11 @@ library(networkdata)
 library(intergraph)
 library(network)
 library(igraph)
+library(ergm)
 
 # Load data
 data(protein)
-protein = simplify(protein, remove.multiple = TRUE, remove.loops = FALSE)
+protein = simplify(protein, remove.multiple = TRUE)
 ```
 
 ```{r}
@@ -26,11 +28,11 @@ protein = set_vertex_attr(protein, "lethality", others, "Other")
 
 # Save a network object of protein dataset as well
 protein_net = asNetwork(protein)
+summary(protein_net, print.adj = FALSE)
 ```
 
-```{r}
-library(ergm)
-ergm.fit = ergm(protein_net ~ nodematch("lethality", diff=T) + concurrent + edges)
+```{r, warnings = FALSE}
+ergm.fit = ergm(protein_net ~ edges + nodematch("lethality", diff=T))
 summary(ergm.fit)
 ```
 
@@ -38,7 +40,18 @@ summary(ergm.fit)
 plogis(ergm.fit$coef[1])
 ```
 
-```{r}
+```{r, warning = FALSE}
 gof.model = gof(ergm.fit)
 plot(gof.model)
 ```
+
+```{r, warning = FALSE}
+ergm.fit.2 = ergm(protein_net ~ nodefactor("lethality") + concurrent + edges)
+summary(ergm.fit.2)
+```
+
+```{r}
+ergm.fit.3 = ergm(protein_net ~ nodefactor("lethality") + concurrent + edges + nodematch("lethality", diff = F))
+summary(ergm.fit.3)
+```
+

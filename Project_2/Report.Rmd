@@ -50,12 +50,13 @@ library(intergraph)
 library(networkdata)
 library(sna)
 library(ggplot2)
+library(RColorBrewer)
 ```
 
-```{r net-one, echo = FALSE, fig.align='center', fig.width=6, fig.height=6,  fig.cap= "Network visualization"}
+```{r, echo = FALSE}
 #-- load data and compute summary statistics
 data(protein)
-protein = simplify(protein, remove.multiple = TRUE, remove.loops = FALSE)
+protein = simplify(protein, remove.multiple = TRUE)
 
 # Select vertices with different lethality name
 others = which(!(igraph::vertex_attr(protein, "lethality") %in% c("Unknown", "Lethal", "Non-Lethal")))
@@ -65,9 +66,10 @@ protein = set_vertex_attr(protein, "lethality", others, "Other")
 
 # Save a network object of protein dataset as well
 protein_net = asNetwork(protein)
+```
 
+```{r net-one, echo = FALSE, fig.align='center', fig.width=6, fig.height=6,  fig.cap= "Network visualization"}
 #-- set color palette
-library(RColorBrewer)
 my.pal = brewer.pal(length(unique(protein_net%v%"lethality")),"Set1")
 l = my.pal[as.factor(protein_net%v%"lethality")]
 
@@ -77,11 +79,13 @@ plot(protein_net, vertex.col = l, edge.col = "grey40", main = "Interaction among
 legend("bottomright", legend=c("Lethal", "Non-Lethal", "Other", "Unknown"), col = my.pal, pch = 19, pt.cex=0.9, cex = 0.5)
 ```
 
-The following table shows the frequency distribution of the different levels of lethality in the network.
+Table \ref{tab:tab-one} shows the frequency distribution of the different levels of lethality in the network.
 
 ```{r tab-one, echo = FALSE}
 knitr::kable(
-  table(as.factor(protein_net%v%"lethality")), caption = 'Frequency table of the attribute lethality', col.names = c("Level", "Count")
+  table(as.factor(protein_net%v%"lethality")), 
+  caption = 'Frequency table of the attribute lethality', 
+  col.names = c("Level", "Count")
 )
 ```
 
@@ -118,10 +122,6 @@ legend("bottomright", legend=c("Lethal", "Non-Lethal", "Other", "Unknown"), col 
 
 In addition to visualization, examining network and node characteristics can provide some insight into network structures and possible modeling strategies. Network size and density have been discussed earlier in the introduction. In this section, we will focus on the average number of links per node (mean degree), through a histogram describing the distribution along with a summary statistics table for a better quantitative description.
 
-Indeed, like any real world dataset, we see through figure \ref{fig:hist} and tabel \ref{tab:tab-two} that most nodes do not interact woth other nodes indicating that proteins mostly do not interact with each other. The degree distribution histogram also shows that some proteins have a high degree indicating the bigger nodes seen in graph \ref{fig:net-two} in the PPI network.
-
-The average mean degree is roughly $2.1$ indicating that proteins are connected to, and therefore linked with, an average of *2* other proteins.
-
 ```{r hist, fig.align='center', fig.width=5, fig.height=3.5, fig.cap="Degree distribution of the proteins", echo = FALSE, warning=FALSE }
 protein.degrees.df = data.frame(degree = igraph::degree(protein))
 ggplot(protein.degrees.df) + 
@@ -129,24 +129,33 @@ ggplot(protein.degrees.df) +
   aes(degree) + geom_histogram(binwidth = 2) + theme_bw() + theme(plot.title = element_text(size = 10, face = "bold", hjust = 0.5))
 ```
 
-```{r tab-two, echo = FALSE}
+```{r stat, echo = FALSE}
 df = data.frame(unclass(summary(igraph::degree(protein))))
 knitr::kable(round(df,1), caption = 'Summary statistics of the degree distribution of PPI network', col.names = c("Value"))
 ```
 
+Indeed, like any real world dataset, we see through figure \ref{fig:hist} and tabel \ref{tab:stat} that most nodes do not interact woth other nodes indicating that proteins mostly do not interact with each other. The degree distribution histogram also shows that some proteins have a high degree indicating the bigger nodes seen in graph \ref{fig:net-two} in the PPI network.
+
+The average mean degree is roughly $2.1$ indicating that proteins are connected to, and therefore linked with, an average of about $2$ other proteins.
+
 #### Mixing matrix
 
-The network visualizations above showed some potential clustering; another option for identifying clustering is to examine mixing matrices and correlation coefficients. Mixing matrices can be used to examine the number of connected dyads (pairs of proteins in our case) for each possible combination of levels for a categorical node attribute. For example, how many connected dyads have both proteins classified as non-lethal or is there some clustering between lethal proteins and non-lethal ones? We already found some evidence of clustering by different levels of lethality and a mixing matrix can help confirm these patterns.
+The network visualizations above showed some potential clustering; another option for identifying clustering is to examine mixing matrices and correlation coefficients. Mixing matrices can be used to examine the number of connected dyads (pairs of proteins in our case) for each possible combination of levels for a categorical node attribute. 
+
+For example, how many connected dyads are forming when both proteins are classified as non-lethal or is there some clustering between lethal proteins and non-lethal ones? We already found some evidence of clustering by different levels of lethality and a mixing matrix can help confirm these patterns.
+
+
+
 
 ```{r mixmat, echo = FALSE}
-knitr::kable(mixingmatrix(protein_net, "lethality")[[2]])
+knitr::kable(mixingmatrix(protein_net, "lethality")[[2]], caption = "Mixing matrix of the attribute lethality")
 ```
 
-**REVIEW NUMBERS**
+Indeed, the mixing matrix shown in table \ref{tab:mixmat} indicates a bias towards forming ties between proteins when they hold different classes (i.e. non-lethal with lethal). 
 
-Indeed, the mixing matrix shown in \ref{tab:mixmat} indicates a bias towards forming ties between proteins when they hold different classes (i.e. non-lethal with lethal). More in detail, of the 1787 connected dyads including non-lethal proteins, about 25% (451 proteins) are linked with ones that are also classified as non-lethal. However, a much higher number of links are formed with lethal proteins. This may be an indication that proteins of high degree are more likely to be lethal than those of lower degree.
+More in detail, of the 886 connected dyads including lethal proteins, about 25% (218 proteins) are linked with ones that are also classified as lethal. However, a much higher number of links are formed with non-lethal proteins. 
 
-One way to further explore this finding is through a visual representation of the average number of links for each class of proteins. The latter can help further examine the relationship between lethality and network structure.
+One way to further explore the likelihood of forming a tie based on the class of proteins is through a visual representation of the average number of links for each class. The latter can help further examine the relationship between lethality and network structure.
 
 ```{r rel, fig.align='center', fig.width=5, fig.height=3.5, fig.cap="Average link per protein category", echo=FALSE}
 #-- means to plot
@@ -154,28 +163,116 @@ n = degree(protein_net, gmode='graph')
 m = tapply(n, lethality, mean)
 
 #-- plot the average links per lethality
-plot(sort(m), type = "b", 
+plot(sort(m), type = "b", cex = 0.7,
      col = "blue4",
      axes = FALSE, 
      ylab="Average links", 
      xlab="Lethality level",
-     main ="Relationship between lethality and links")
-axis(1, at=1:4, lab=c("Unknown", "Non-lethal", "Other", "Lethal"))
-axis(2)
+     main ="Relationship between lethality and links",
+     cex.main = 0.7,
+     cex.lab = 0.5)
+axis(1, at=1:4, lab=c("Unknown", "Non-lethal", "Other", "Lethal"), cex.axis = 0.5)
+axis(2, cex.axis = 0.5)
 box()
 ```
 
-Figure \ref{fig:rel} and table \ref{tab:freqt} confirms this finding by showing that lethal proteins have a higher number of links thus indicating that proteins of high degree are indeed more likely to be lethal than those of lower degree.
-
 ```{r freqt, echo = FALSE}
-knitr::kable(sort(m), col.names = "Average link")
+knitr::kable(round(sort(m),1), col.names = "Average link", caption = "Average links per class of protein")
 ```
 
-## Modeling and predicting probabilities
+Figure \ref{fig:rel} and table \ref{tab:freqt} confirm that lethal proteins have a higher number of links thus indicating that proteins of high degree are indeed more likely to be lethal than those of lower degree.
 
 ### Small World simulation
 
+As with many forms of model building, statistical network modeling should begin with a null model. The null model is a simple random graph model, there are no complex dependence assumptions to account for.
+
+Although the null model is a good representation of the observed density of the PPI network, it is unlikely to be a good representation of other observed network characteristics. Simulating the network's measures based on the small world property can aid in understanding how well the latter captures the structures comprising the observed network.
+
+## Modeling and predicting probabilities
+
 ### Exponential random graph modeling
+
+In the aim of building a model that captures the hidden structure the network as well as answering the question whether node attributes influence the likelihood of a link, we will fit an exponential random graph model. Descriptive statistics throughout the study indicated that the class of proteins may influence the number of interactions among them. To examine the influence of these node attributes on the likelihood of a tie, we will build three different models : 
+
+* ERGM where we consider the lethality as the main effect (i.e. using nodefactor)
+* ERGM where we consider the interaction terms for the nodal attribute lethality (i.e. nodematch)
+* ERGM where both interation terms as well as main effects are considered.
+
+As means of model comparison and model goodness of fit study, we will look at the Bayesian Information Criterion and the diagnostic plots produced by the function *gof* of the *ergm* package in *R*.
+
+Hypotheses testing the main effects and the interaction terms can be worded as follows :
+ *$H_0$ = The category lethal does not affect the probability of forming ties between proteins
+ *$H_1$ = The category lehal affects the probability of forming ties between proteins
+
+By definition, nodefactor adds multiple statistics to the model, each one equal to the number of times a node with the specified attribute is at one end of an edge. To interpret the results in summary statistics of the model, it is necessary to know the reference group for any categorical variables. In the statnet package, the reference group in an ERGM defaults to the first group in the list shown in the summary of the network. In our case, the class "lethal" is the reference group for the attribute "lethality". Since the "non-lethal" group contains the most nodes and, by extension, the highest degree, we have set it as the reference group.
+
+The summary statistics of the first exponential random graph model produces the following output:
+
+```{r, echo = FALSE, warning=FALSE, include=FALSE}
+library(ergm)
+ergm.fit.1 = ergm(protein_net ~ nodefactor("lethality", base = 2) + edges)
+```
+
+```{r, warning = FALSE, echo = FALSE}
+print(summary(ergm.fit.1))
+```
+
+The estimates 'lethal' is significant and positive which indicates an increased likelihood to form ties for proteins when they have been classed as 'lethal' compared to those classified as 'unknown' and 'other'. These results are consistent with the mixing matrix in table \ref{tab:mixmat} and figure \ref{fig:rel}.
+
+We can then proceed by computing the probability of forming a link between proteins based on the assumption that the main effect is "lethality" using the *plogis()* function. The result is 54.7% which is significantly high based on the fact that the density of network is just below $0.001$.
+
+```{r, echo = FALSE, include = FALSE}
+plogis(ergm.fit.1$coef[1])
+```
+
+In order to unveil the homophily in the network, we will fit the second model considering interaction terms. The summary statistics of the model is the following :
+
+```{r, warnings = FALSE, echo = FALSE, include=FALSE}
+ergm.fit.2 = ergm(protein_net ~ edges + nodematch("lethality", diff=T))
+```
+
+```{r, echo = FALSE}
+summary(ergm.fit.2)
+```
+
+The first thing to notice is that the estimate that corresponds to nodematch.lethality.Other is -Inf. Looking again at the mixing matrix in table \ref{tab:mixmat}, we conclude that this is due to the absence of interactions of this class with other classes. Therefore, we will continue focusing on the two main classes of the network "Lethal" and "Non-lethal".
+
+The resulting model shows significant positive coefficient for lethal homophily in the network. That is, two proteins in the same category "lethal" are more likely to be connected further confirming our findings. The model also shows non significant coefficients for the class non-lethal. In this case, predicting the probability of forming a tie goes up to 74.3% which means that the homophily is better captured in this model compared to the one where we only consider lethality as the main effect.
+
+However, both models contained estimates in which the p-value is small enough to reject the null hypothesis.
+
+```{r, echo = FALSE, include = FALSE}
+plogis(ergm.fit.2$coef[2])
+```
+
+The last model that we will test is one where we include both nodematch and nodefactors for the attribute lethality which gives the following summary : 
+
+```{r, echo = FALSE, warning = FALSE, include = FALSE}
+ergm.fit.3 = ergm(protein_net ~ edges + nodematch("lethality", diff=T) + nodefactor("lethality", base = 2))
+```
+
+```{r, echo = FALSE}
+print(summary(ergm.fit.3))
+```
+
+### Goodness of fit test
+
+Finally, we will summarize all three BIC scores for all three models for comparison in the following table:
+
+```{r comp, echo = FALSE}
+dfs = data.frame(With_nodefactor = summary(ergm.fit.1)$bic, With_notematch = summary(ergm.fit.2)$bic, Both = summary(ergm.fit.3)$bic)
+knitr::kable(round(dfs), caption = "BIC score for all three models", col.names = c("With main effect", "With nodematch", "nodematch & main effect"))
+```
+
+We can conclude that the model where lethality is considered the main effect yeilds the lowest BIC score indicating a better fit than the other two models seen above. To further explore the goodness of fit of the statistical model, we will compute the plots produced using the *gof* function.
+
+```{r diag, echo = FALSE, fig.align='center', fig.width=7, fig.height=6, fig.cap="Diagnostic plots of the goodness of fit", warnings = FALSE}
+par(mfrow = c(2,2))
+gof.model = gof(ergm.fit.1)
+plot(gof.model, cex.main = 0.6)
+```
+
+**Analysis of the diagnostics plot :**
 
 ## Conclusion
 
