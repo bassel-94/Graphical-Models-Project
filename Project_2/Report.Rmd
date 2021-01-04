@@ -1,6 +1,6 @@
 ---
 title: "Studying the effect of lethality on protein-protein interactions in Yeast"
-author: "Michael DARMOUTOMO and Bassel MASRI"
+author: "Michael DARMOUTOMO, Guillaume FRANCHI and Bassel MASRI"
 date: "1/1/2021"
 output:
   pdf_document: default
@@ -27,7 +27,7 @@ For our project, we have chosen the protein network which can be found in the pa
 
 ### Preprocessing step
 
-Upon general descriptive analysis of the network information, we notice that the main attribute we are interested in, lethality, contains more than the following classes; lethal, Non-lethal, Unknown and some other protein interactions that are unclassified. Therefore, the first step in our analysis was to perform some preprocessing to make the attributes clearer. The unclassified proteins are put in a class called other which will not be examined in the analysis. The final list of attributes on which we conduct the analysis is the following : 
+Upon general descriptive analysis of the network information, we notice that the main attribute we are interested in, lethality, contains the following classes; lethal, Non-lethal, Unknown and some other protein interactions that are unclassified. Therefore, the first step in our analysis was to perform some data preprocessing to make the attributes clearer. The unclassified proteins are put in a class called other which will not be examined in the analysis. The final list of attributes on which we conduct the analysis is the following : 
 
 * Lethal
 * Non-lethal
@@ -151,13 +151,13 @@ For example, how many connected dyads are forming when both proteins are classif
 knitr::kable(mixingmatrix(protein_net, "lethality")[[2]], caption = "Mixing matrix of the attribute lethality")
 ```
 
-Indeed, the mixing matrix shown in table \ref{tab:mixmat} indicates a bias towards forming ties between proteins when they hold different classes (i.e. non-lethal with lethal). 
+Indeed, the mixing matrix shown in table \ref{tab:mixmat} indicates a bias towards forming ties between proteins when they hold different classes (i.e. non-lethal with lethal). This may be captured later on we take into account homophily in the network in the following section. 
 
 More in detail, of the 886 connected dyads including lethal proteins, about 25% (218 proteins) are linked with ones that are also classified as lethal. However, a much higher number of links are formed with non-lethal proteins. 
 
 One way to further explore the likelihood of forming a tie based on the class of proteins is through a visual representation of the average number of links for each class. The latter can help further examine the relationship between lethality and network structure.
 
-```{r rel, fig.align='center', fig.width=5, fig.height=3.5, fig.cap="Average link per protein category", echo=FALSE}
+```{r rel, fig.align='center', fig.width=5, fig.height=4, fig.cap="Average link per protein category", echo=FALSE}
 #-- means to plot
 n = degree(protein_net, gmode='graph')
 m = tapply(n, lethality, mean)
@@ -201,10 +201,11 @@ In the aim of building a model that captures the hidden structure the network as
 As means of model comparison and model goodness of fit study, we will look at the Bayesian Information Criterion and the diagnostic plots produced by the function *gof* of the *ergm* package in *R*.
 
 Hypotheses testing the main effects and the interaction terms can be worded as follows :
+
  *$H_0$ = The category lethal does not affect the probability of forming ties between proteins
  *$H_1$ = The category lehal affects the probability of forming ties between proteins
 
-By definition, nodefactor adds multiple statistics to the model, each one equal to the number of times a node with the specified attribute is at one end of an edge. To interpret the results in summary statistics of the model, it is necessary to know the reference group for any categorical variables. In the statnet package, the reference group in an ERGM defaults to the first group in the list shown in the summary of the network. In our case, the class "lethal" is the reference group for the attribute "lethality". Since the "non-lethal" group contains the most nodes and, by extension, the highest degree, we have set it as the reference group.
+By definition, nodefactor adds multiple statistics to the model, each one equal to the number of times a node with the specified attribute is at one end of an edge. To interpret the results in summary statistics of the model, it is necessary to know the reference group for any categorical variables. In the statnet package, the reference group in an ERGM defaults to the first group in the list shown in the summary of the network. In our case, the class "lethal" is the reference group for the attribute "lethality" by default. Since the "non-lethal" group contains the most nodes and, by extension, the highest degree, we have set it as the reference group.
 
 The summary statistics of the first exponential random graph model produces the following output:
 
@@ -255,6 +256,8 @@ ergm.fit.3 = ergm(protein_net ~ edges + nodematch("lethality", diff=T) + nodefac
 print(summary(ergm.fit.3))
 ```
 
+We notice an overall worse fit when we include the above features in our model. Estimates seem to be slightly less significant than the first two models where only main effect and similarity effect are considered independently. In the next subsection, we will further explore the goodness of fit diagnostics.
+
 ### Goodness of fit test
 
 Finally, we will summarize all three BIC scores for all three models for comparison in the following table:
@@ -266,13 +269,22 @@ knitr::kable(round(dfs), caption = "BIC score for all three models", col.names =
 
 We can conclude that the model where lethality is considered the main effect yeilds the lowest BIC score indicating a better fit than the other two models seen above. To further explore the goodness of fit of the statistical model, we will compute the plots produced using the *gof* function.
 
-```{r diag, echo = FALSE, fig.align='center', fig.width=7, fig.height=6, fig.cap="Diagnostic plots of the goodness of fit", warnings = FALSE}
+```{r diag, echo = FALSE, fig.align='center', fig.width=6, fig.height=5, fig.cap="Diagnostic plots of the goodness of fit", warnings = FALSE}
 par(mfrow = c(2,2))
 gof.model = gof(ergm.fit.1)
-plot(gof.model, cex.main = 0.6)
+plot(gof.model, main = "Goodness of fit diagnostics", cex.main= 0.4, cex.lab=0.5, cex.axis=0.5)
 ```
 
-**Analysis of the diagnostics plot :**
+Visual analysis of the above goodness of fit plots indicate that the model is able to reconstruct the proportion of edges with respect to the edgewise shared partner
+terms. This is an indication that our model was able to capture the underlying transitivity in the PPI network. The overall statistics of the levels of the attribute "lethality" are also well represented with a sligh underestimation for the nodefactor "unknown". 
+
+However, the model overestimates the proportion of nodes that have lower degrees. For exemple, we notice a significant peak in the estimated line (code colored black) compared to the empirical estimations (code colored blue). This may be an indication that the degree distribution is not well represented by the model we built. One way to improve the fit of the model is to account for the degree distribution using the gwdegree term which stands for geometrically weighted degree.
+
+### Adding dependent terms to improve the model
+
+Definition of the geometrically weighted degree (gwdegree)
+Model building with gwdegree
+plot network diagnostics
 
 ## Conclusion
 
