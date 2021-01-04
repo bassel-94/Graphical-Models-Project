@@ -5,40 +5,37 @@ date: "1/1/2021"
 output:
   pdf_document: default
   html_document: default
+bibliography: bibliography.bibtex
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Introduction and research quesion
+# Introduction
+Protein–protein interactions (PPI) are important to understand, since they give us an insight in how protein interactions affect larger organisms or cells. Modeling these interactions as a network gives us the opportunity to apply statistical graph models and discover relationships in a statistical manner. We can take advantage of graphical features from the network, such as number of edges, structure, centrality, etc. <!-- Some papers that use graph modeling applied on PPI --> In this paper we analyse how the deletion of a protein affects the lethality of a cell. We focus on the yeast Saccharomyces cerevisiae. This paper is an expansion of earlier work by @jeong2001lethality, but expands this literature by applying statistical models to find the relationship between lethality and its interactions. This paper is split up into two parts of analysis, which firstly consists of a descriptive analysis of the network's structure, and secondly it uses an exponential random graph model (henceforth, ERGM) to model the correlation of ties being formed between vertices and attributes such as lethality. These two parts allow us to answer the research question whether there is a statistically significant correlation between the formation of links between proteins and lethality?
 
-Protein–protein interactions (PPI) are key to protein functions and regulations within the cell cycle, DNA replication, and cellular signaling. Therefore, detecting whether a pair of proteins interact is of great importance for the study of molecular biology. Indeed, the ultimate goal when predicting PPI interactions is to predict the formation of links between them. Furthermore, modeling PPI's have become a key step in the realization of protein function within cell cycle progression, DNA replication, and signal transmission. For our graphical models project, we have chosen to identify the architecture of a yeast PPI network in order to determine if the proteins' interactions are best described by a statistical law or if it is random. Secondly, the data also describes a certain of level of lethality linked to the removal of a protein which can be correlated with the number of iteractions the protein has. Quantifying the effect of lethality on forming links would proove or disproove this correlation which was also the goal of our project through network modeling techniques.
+This paper continues as follows: Section 2 elaborates the methodology used in this paper, Section 3 consists of the Exploratory Data Analysis, Section 4 contains the Statistical Graph Modeling, and Section 5 contains the Conclusion.
 
-## Methodoly
+# Methodology
 
-### Analysis steps
+This section discusses the methodology used in this paper. It goes through the data that we use, our analysis methodology and preprocessing steps.
 
-Investigating protein–protein interactions network relate to examine the correlation between forming links and classifying the lethality of a protein. While typial machine learning algorithms such as random forests, neural networks, ensemble classifiers, and Naive Bayes classifiers are often proposed for classification problems and, therefore, detecting lethality of protein when analyzing PPIs datasets, network modeling techniques can offer a significant insight on the interaction between said proteins. Therefore, the steps for analyzing the PPI network start with a typical exploratory data analysis to capture as much information as we can about the network. We then implement numerical sumilations to capture the structure of the network in the aim of quantifying its properties (e.g. random and small world properties) and finally, we fit different models on the network to predict the formation of links based on the network's attributes which would help answer our main research question -is there a statistically significant correlation between the formation of links between proteins and lethality?
+## Data
 
-### Protein-Protein-Interaction yeast network
+The S. cerevisiae PPI network was created by @jeong2001lethality and contains a network of 2114 proteins with 2203 interactions. The network contains data of the yeast proteins, the interactions between proteins and whether the deletion of a protein results in a death of the yeast (lethality). The data was directly downloaded using the package `networkdata` in R.
 
-For our project, we have chosen the protein network which can be found in the package *networkdata* in R. The protein network was built by Jeong, Mason, Barabasi and Oltvai (2001) who examined a data matrix that contained interactions linking 2114 proteins contained in yeast. Earlier experimental work had demonstrated that some of the protein molecules in yeast were lethal; if they were removed the yeast would die. Removing others, however, had no such dramatic effect. So Jeong et al. examined the question of whether the structural properties of those proteins, in particular their degree centralities, could predict which proteins were lethal and which ones were not.
+Before analysing the data, we perform some transformations to the network. The attribute lethality contains the following classes: lethal, non-lethal, unknown and 69 proteins with their own name. Since our main interest for this research is just to answer whether we can predict the lethality, we group this last category into *Other*.
 
-### Preprocessing step
+## Analysis steps
 
-Upon general descriptive analysis of the network information, we notice that the main attribute we are interested in, lethality, contains more than the following classes; lethal, Non-lethal, Unknown and some other protein interactions that are unclassified. Therefore, the first step in our analysis was to perform some preprocessing to make the attributes clearer. The unclassified proteins are put in a class called other which will not be examined in the analysis. The final list of attributes on which we conduct the analysis is the following : 
+Investigating protein–protein interactions network relate to examine the correlation between forming links and classifying the lethality of a protein. While typical machine learning algorithms such as random forests, neural networks, ensemble classifiers, and Naive Bayes classifiers are often proposed for classification problems and, therefore, detecting lethality of protein when analyzing PPIs datasets, network modeling techniques can offer a significant insight on the interaction between said proteins. Therefore, the steps for analyzing the PPI network start with a typical exploratory data analysis to capture as much information as we can about the network. We then implement numerical sumilations to capture the structure of the network in the aim of quantifying its properties (e.g. random and small world properties) and finally, we fit different models on the network to predict the formation of links based on the network's attributes which would help answer our main research question -is there a statistically significant correlation between the formation of links between proteins and lethality?
 
-* Lethal
-* Non-lethal
-* Unknown
-* Other
+<!-- After running some summary statistics in *R*, we get a graph density of about $0.001$. -->
 
-After running some summary statistics in *R*, we get a graph density of about $0.001$.
+# Exploratory Data Analysis
 
-## Exploratory Data Analysis
-
-### Visual exploration of the network
+## Visual exploration of the network
 
 As with all statistical modeling, data exploration is advised prior to network model development. In the case of network data, visualization and descriptive statistics can give some insight into the structure of a network that can be helpful during the development and evaluation of a statistical model. The first thing we will do is a visualization of the network with node color showing the lethality attribute which can aid in identifying patterns of ties among proteins with different characteristics.
 
@@ -116,9 +113,9 @@ plot( smallnet, vertex.col = l, edge.col = "grey40", main = "Interaction among t
 legend("bottomright", legend=c("Lethal", "Non-Lethal", "Other", "Unknown"), col = my.pal, pch = 19, pt.cex=0.9, cex = 0.5)
 ```
 
-### Descriptive analysis of the network
+## Descriptive analysis of the network
 
-#### Degree distribution
+## Degree distribution
 
 In addition to visualization, examining network and node characteristics can provide some insight into network structures and possible modeling strategies. Network size and density have been discussed earlier in the introduction. In this section, we will focus on the average number of links per node (mean degree), through a histogram describing the distribution along with a summary statistics table for a better quantitative description.
 
@@ -138,7 +135,7 @@ Indeed, like any real world dataset, we see through figure \ref{fig:hist} and ta
 
 The average mean degree is roughly $2.1$ indicating that proteins are connected to, and therefore linked with, an average of about $2$ other proteins.
 
-#### Mixing matrix
+## Mixing matrix
 
 The network visualizations above showed some potential clustering; another option for identifying clustering is to examine mixing matrices and correlation coefficients. Mixing matrices can be used to examine the number of connected dyads (pairs of proteins in our case) for each possible combination of levels for a categorical node attribute. 
 
@@ -182,15 +179,15 @@ knitr::kable(round(sort(m),1), col.names = "Average link", caption = "Average li
 
 Figure \ref{fig:rel} and table \ref{tab:freqt} confirm that lethal proteins have a higher number of links thus indicating that proteins of high degree are indeed more likely to be lethal than those of lower degree.
 
-### Small World simulation
+## Small World simulation
 
 As with many forms of model building, statistical network modeling should begin with a null model. The null model is a simple random graph model, there are no complex dependence assumptions to account for.
 
 Although the null model is a good representation of the observed density of the PPI network, it is unlikely to be a good representation of other observed network characteristics. Simulating the network's measures based on the small world property can aid in understanding how well the latter captures the structures comprising the observed network.
 
-## Modeling and predicting probabilities
+# Modeling and predicting probabilities
 
-### Exponential random graph modeling
+## Exponential random graph modeling
 
 In the aim of building a model that captures the hidden structure the network as well as answering the question whether node attributes influence the likelihood of a link, we will fit an exponential random graph model. Descriptive statistics throughout the study indicated that the class of proteins may influence the number of interactions among them. To examine the influence of these node attributes on the likelihood of a tie, we will build three different models : 
 
@@ -255,7 +252,7 @@ ergm.fit.3 = ergm(protein_net ~ edges + nodematch("lethality", diff=T) + nodefac
 print(summary(ergm.fit.3))
 ```
 
-### Goodness of fit test
+## Goodness of fit test
 
 Finally, we will summarize all three BIC scores for all three models for comparison in the following table:
 
@@ -274,10 +271,11 @@ plot(gof.model, cex.main = 0.6)
 
 **Analysis of the diagnostics plot :**
 
-## Conclusion
+# Conclusion
 
 Knowledge about how they interact can lead to better understanding of a great many diseases and it can help in the design of appropriate therapies. 
 Results showed that proteins of high degree were far more likely to be lethal than those of lower degree.
 Findings through the exploratory data analysis and the modeling of the network showed consistent results. We were able to extract rich insight from the network analysis of the PPI.
 
+# References
 
