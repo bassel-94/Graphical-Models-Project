@@ -257,13 +257,10 @@ ergm.fit.3 = ergm(protein_net ~ edges + nodematch("lethality", diff=T) + nodefac
 print(summary(ergm.fit.3))
 ```
 
-<<<<<<< HEAD
 We notice an overall worse fit when we include the above features in our model. Estimates seem to be slightly less significant than the first two models where only main effect and similarity effect are considered independently. In the next subsection, we will further explore the goodness of fit diagnostics.
 
-### Goodness of fit test
-=======
 ## Goodness of fit test
->>>>>>> 196f1fce2136cb85ab95376cbfb2f4b088a91004
+
 
 Finally, we will summarize all three BIC scores for all three models for comparison in the following table:
 
