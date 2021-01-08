@@ -1,0 +1,179 @@
+---
+title: "Guillaume's part"
+author: "Guillaume Franchi"
+date: "4/1/2021"
+output:
+  html_document: default
+  pdf_document: default
+bibliography: bibliography.bibtex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data preprocessing
+
+```{r, include = FALSE, echo = FALSE}
+rm(list=ls())
+library(network)
+library(igraph)
+library(intergraph)
+library(networkdata)
+library(sna)
+library(ggplot2)
+library(RColorBrewer)
+```
+
+```{r, echo = FALSE}
+#-- load data and compute summary statistics
+data(protein)
+protein = simplify(protein, remove.multiple = TRUE)
+
+# Select vertices with different lethality name
+others = which(!(igraph::vertex_attr(protein, "lethality") %in% c("Unknown", "Lethal", "Non-Lethal")))
+
+# Set selected vertice attributes to "Other"
+protein = set_vertex_attr(protein, "lethality", others, "Other")
+
+# Save a network object of protein dataset as well
+protein_net = asNetwork(protein)
+```
+
+We take the giant component :
+
+```{r,echo=FALSE}
+prot_comp = component.largest(protein_net)
+prot_small = protein_net[prot_comp,prot_comp]
+smallnet = as.network(prot_small, directed=FALSE, remove.loops = FALSE )
+
+lethality = network::get.vertex.attribute( protein_net, 'lethality')
+sub_lethality = as.vector(subset(lethality, prot_comp!="FALSE"))
+
+smallprot<-asIgraph(smallnet)
+```
+
+# Centrality
+
+## Closeness centrality
+
+```{r,echo=FALSE}
+clo.cent<-igraph::closeness(smallprot,normalized = TRUE)
+avg.clo.cent<-tapply(clo.cent, sub_lethality, mean)
+avg.clo.cent
+```
+```{r,echo=FALSE}
+hist(clo.cent)
+```
+
+
+## Betweenness centrality
+
+```{r,echo=FALSE}
+bet.cent<- igraph::betweenness(smallprot,normalized = TRUE)
+avg.bet.cent<-tapply(bet.cent, sub_lethality, mean)
+avg.bet.cent
+```
+
+```{r,echo=FALSE}
+hist(bet.cent)
+```
+
+## Eigenvalue centrality
+
+```{r,echo=FALSE}
+eig.cent<- igraph::eigen_centrality(smallprot)$vector
+avg.eig.cent<-tapply(eig.cent,sub_lethality,mean)
+avg.eig.cent
+```
+```{r,echo=FALSE}
+hist(eig.cent)
+```
+
+
+We cannot say that "lethal" proteins are more central than the others, and thus regarding each one of the centrality measure above.
+
+# Clustering coefficient
+
+We take a look at clustering coefficients in the network :
+
+```{r}
+cl<-transitivity(protein,type = "local")
+```
+
+```{r}
+summary(cl)
+```
+
+We take the average of the clustering coefficient according to the different values of the 'lethality' attribute. First we remove the missing values :
+
+```{r}
+sub.cl<-cl[-which(is.na(cl))]
+lethality.cl<-lethality[-which(is.na(cl))]
+```
+
+
+
+```{r}
+avg.cl<-tapply(sub.cl,lethality.cl,mean)
+avg.cl
+```
+Nodes with lethal attribute tends to have a slightly higher clustering coefficient. However it may be not relevant as the number of nodes with undefined clustering coefficient is very high...
+
+# ERGM with `gwdegree()`
+
+```{r,echo=FALSE}
+library(ergm)
+```
+We want now to take into account the degree distribution and the effect of lethality value in our model.
+
+First, we tune our parameter of decay for the `gwdegree()` function, between 0.1 and 0.9. We don't look for higher parameter, since the decrease of the degree distribution is fast, it seems reasonable to look for a small value of the decay parameter.
+
+```{r,echo=FALSE,message=FALSE}
+decay<-seq(0.1,0.9,by=0.1)
+bic<-rep(NA,length(decay))
+
+for (i in 1:length(decay)){
+  fit<-ergm(protein_net ~ edges + nodefactor("lethality",base=2)+ gwdegree(decay[i],fixed=TRUE))
+  bic[i]<-summary(fit)$bic
+}
+```
+
+
+```{r}
+min.decay<-decay[which.min(bic)]
+ergm.fit.4 = ergm(protein_net ~ edges + nodefactor("lethality",base=2)  + gwdegree(min.decay,fixed=TRUE))
+```
+```{r}
+summary(ergm.fit.4)
+```
+
+The BIC criterion is slightly better, so it seems a better fit than the other models. Let's check the goodness of fit with the following plot :
+
+```{r}
+gof.4<-gof(ergm.fit.4)
+par(mfrow=c(2,2))
+plot(gof.4)
+```
+
+Here, the minimum geodesic distance indicates a good fit of the model, and the transitivity is still well captured. However, we still don't modelze properly the degree distribution.
+
+# ERGM with `gwesp()`
+
+We finally try a model taking into account both the degree and the transitivity.
+
+```{r}
+ergm.fit.5<- ergm(protein_net ~ edges + nodefactor("lethality",base=2) + gwdegree(log(2),fixed=TRUE) +
+  gwesp(log(3),fixed=TRUE))
+```
+```{r}
+summary(ergm.fit.5)
+```
+```{r}
+gof.5<-gof(ergm.fit.5)
+par(mfrow=c(2,2))
+plot(gof.5)
+```
+
+
+
