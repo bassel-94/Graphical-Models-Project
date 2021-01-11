@@ -323,7 +323,7 @@ The resulting model shows significant positive coefficient for lethal homophily 
 However, both models contained estimates in which the p-value is small enough to reject the null hypothesis.
 
 ```{r, echo = FALSE, include = FALSE}
-plogis(ergm.fit.2$coef[2])
+plogis(ergm.fit.2$coef[1] + ergm.fit.2$coef[2])
 ```
 
 The last model that we will test is one where we include both nodematch and nodefactors for the attribute lethality which gives the following summary : 
