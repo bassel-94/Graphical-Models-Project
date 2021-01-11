@@ -1,12 +1,19 @@
 ---
-title: "Studying the effect of lethality on protein-protein interactions in Yeast"
+title: "Studying the effect of lethality on protein-protein interactions in yeast"
 author: "Michael DARMOUTOMO, Guillaume FRANCHI and Bassel MASRI"
 date: "1/1/2021"
 output:
+  html_document:
+    number_sections: true
+    df_print: paged
+  pdf: default
   pdf_document: default
-  html_document: default
 bibliography: bibliography.bibtex
 ---
+
+\newpage
+\tableofcontents
+\newpage
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -29,9 +36,14 @@ Before analyzing the data, we perform some transformations to the network. The a
 
 ## Analysis steps
 
-Upon general descriptive analysis of the network information, we notice that the main attribute we are interested in, lethality, contains the following classes; lethal, Non-lethal, Unknown and some other protein interactions that are unclassified. Therefore, the first step in our analysis was to perform some data preprocessing to make the attributes clearer. The unclassified proteins are put in a class called other which will not be examined in the analysis. The final list of attributes on which we conduct the analysis is the following : 
-
 Investigating protein–protein interactions network relate to examine the correlation between forming links and classifying the lethality of a protein. While typical machine learning algorithms such as random forests, neural networks, ensemble classifiers, and Naive Bayes classifiers are often proposed for classification problems and, therefore, detecting lethality of protein when analyzing PPIs datasets, network modeling techniques can offer a significant insight on the interaction between said proteins. Therefore, the steps for analyzing the PPI network start with a typical exploratory data analysis to capture as much information as we can about the network. We then implement numerical simulations to capture the structure of the network in the aim of quantifying its properties (e.g. random and small world properties) and finally, we fit different models on the network to predict the formation of links based on the network's attributes which would help answer our main research question -is there a statistically significant correlation between the formation of links between proteins and lethality?
+
+### Exponential Random Graph Model (ERGM)
+
+The ERGM is a statistical model that allows us to analyse a network. We model the dependent variable $Y$ as a member of the exponential family. Mathematically, we have the following^[Notation from the slides of Eftychia Solea (UE-MSD01), Topic 4]:
+
+$$P(Y = y | \theta) = \Big( \frac{1}{\kappa(\theta)} \Big) \text{exp} \Big\{ \sum_{H} \theta_{H} g_H(y) \Big\},$$
+where each $H$ is a configuration, or in other words, a set of possible edges in $G$, $g_H(y)$ is the network statistic corresponding to configuration $H$, $g_H(y) = \Pi_{y_{ij \in H}y_{ij} = I_{H occurs in y}}$, and finally $\kappa(\theta)$ is a normalization constant.
 
 # Exploratory Data Analysis
 
@@ -86,17 +98,17 @@ knitr::kable(
 )
 ```
 
-Preliminary visual analysis of the network graphic through \ref{fig:net-one} and \ref{tab:tab-one} show that most proteins in the network fall under the category of non-lethal and many of them are *not* clustered towards the center (i.e. on the outskirts of the network with no edges) with no apparent edges (or links). More clustering formations are noticeable towards the center of the graph but we cannot easily distinguish the groups that are clustered together. We can also note that some lethal proteins, code colored red, have significant interactions with other proteins.
+Preliminary visual analysis of the network graphic through \ref{fig:net-one} and \ref{tab:tab-one} shows that most proteins in the network fall under the category of non-lethal and many of them are *not* clustered towards the center (i.e. on the outskirts of the network with no edges) with no apparent edges (or links). More clustering formations are noticeable towards the center of the graph but we cannot easily distinguish the groups that are clustered together. We can also note that some lethal proteins, code colored red, have significant interactions with other proteins.
 
 Having a large number of nodes in the network can sometimes obscure important patterns in a network graph. Displaying the largest component (i.e. largest connected group of nodes) in a network can aid in clarifying patterns visually. The largest component which contains most of the nodes in the network can be isolated and graphed. 
 
 Vertex size is another ways to visually discern patterns in our network structure. Therefore, the last visual exploratory analysis that we will perform is a plot where the network is colored according to lethality of the proteins and their corresponding vertices would be sized according to a specific measure like the degree. Degree is the number of links a network member has. In this case, degree would represent the number of ties for each pair of proteins in the protein network. 
 
-In order to avoid a plot where we obtain a very large node sizes that overlap and obscure the ties, the size of the nodes can be reduced by reducing the values of degree in the attribute by a factor of 10.
+<!-- In order to avoid a plot where we obtain a very large node sizes that overlap and obscure the ties, the size of the nodes can be reduced by reducing the values of degree in the attribute by a factor of 10. !-->
 
 Figure \ref{fig:net-two} below helps distinguish some more apparent clustering among the proteins by plotting only the main components and sizing the vertices by their degrees. Indeed, we can clearly discern the biggest nodes that correspond to the non-lethal and lethal proteins indicating higher degrees and, by interpretation, higher probability of forming a tie with other proteins. In other words, lethal and non-lethal proteins have high degrees. To what class of proteins have a tendency to form ties with remains, at this stage, unexplored. Later data exploration techniques will help bring these patterns to light.
 
-It is also worth mentioning that clusters of protein classified 'unknown' and 'other' are less significant.
+It is also worth mentioning that clusters of protein classified *Unknown* and *Other* are less significant.
 
 ```{r net-two, fig.align='center', fig.width=6, fig.height=6, fig.cap="Network showing main components and size according to their degrees", echo = FALSE, warning=FALSE}
 prot_comp = component.largest(protein_net)
@@ -127,17 +139,19 @@ ggplot(protein.degrees.df) +
 ```
 
 ```{r stat, echo = FALSE}
-df = data.frame(unclass(summary(igraph::degree(protein))))
-knitr::kable(round(df,1), caption = 'Summary statistics of the degree distribution of PPI network', col.names = c("Value"))
+df = data.frame(t(unclass(summary(igraph::degree(protein)))))
+knitr::kable(round(df,2), caption = 'Summary statistics of the degree distribution of PPI network', col.names = c("Min.", "1st Qu.", "Median", "Mean", "3rd Qu.", "Max."))
 ```
 
+
+<!-- Change this part -->
 Indeed, like any real world dataset, we see through figure \ref{fig:hist} and table \ref{tab:stat} that most nodes do not interact worth other nodes indicating that proteins mostly do not interact with each other. The degree distribution histogram also shows that some proteins have a high degree indicating the bigger nodes seen in graph \ref{fig:net-two} in the PPI network.
 
 The average mean degree is roughly $2.1$ indicating that proteins are connected to, and therefore linked with, an average of about $2$ other proteins.
 
 ### Centrality measures
 
-In biological networks, classical centrality measures can offer some rich insight to identify central and, by extension influential nodes [citation.1]. Typical descriptive centrality measures such for networks such as the closeness, betweenness and eigenvalue centralities will be examined herein in order to identify important nodes in our PPI network.
+In biological networks, classical centrality measures can offer some rich insight to identify central and, by extension influential nodes [@freeman1978centrality]. Typical descriptive centrality measures such for networks such as the closeness, betweenness and eigenvalue centralities will be examined herein in order to identify important nodes in our PPI network.
 
 ```{r centraltab, warning=FALSE, echo = FALSE}
 #-- closeness
@@ -194,9 +208,6 @@ The network visualizations above showed some potential clustering; another optio
 
 For example, how many connected dyads are forming when both proteins are classified as non-lethal or is there some clustering between lethal proteins and non-lethal ones? We already found some evidence of clustering by different levels of lethality and a mixing matrix can help confirm these patterns.
 
-
-
-
 ```{r mixmat, echo = FALSE}
 knitr::kable(mixingmatrix(protein_net, "lethality")[[2]], caption = "Mixing matrix of the attribute lethality")
 ```
@@ -238,24 +249,43 @@ As with many forms of model building, statistical network modeling should begin 
 
 Although the null model is a good representation of the observed density of the PPI network, it is unlikely to be a good representation of other observed network characteristics. Simulating the network's measures based on the small world property can aid in understanding how well the latter captures the structures comprising the observed network.
 
+To gain more knowledge about the PPI network, we explore its small-world property. A small-world network is a graph where most nodes are not neighbors of one other, but any path between two nodes can be reached in a few steps. In order to do this, we compare the properties of a an Erdős–Rényi model with the same number of edges and vertices as the PPI dataset. We specifically look at the main graph and its properties.
+
+```{r}
+df = data.frame(
+  diameter = c(19, 16.524),
+  avg_sp = c(6.812366, 7.091927),
+  clustering_coeff = c(0.0518, 0.001916)
+)
+
+row.names(df) = c("PPI Dataset", "ER model")
+knitr::kable(
+ df, col.names = c("Diameter", "Average shortest path", "Transitivity (Clustering Coefficient)")
+)
+```
+
+In order to quantify the property small-worldness, we compare the shortest average path of the random model $L_r$ with the one of our data, $L$, and also the clustering coefficient of the random model $C_r$ compared to the data $C$. We expect that $\frac{L}{L_r} \approx 1$ and $\frac{C}{C_r} \gg 1$. We find these features in the tables above, since $\frac{L}{L_r} \approx 0.96$ and $\frac{C}{C_r} \approx 27 \gg 1$. These properties give us a fair bit of evidence that the data has the small-world property.
+
 # Modeling and predicting probabilities
 
 ## Exponential random graph modeling
 
-In the aim of building a model that captures the hidden structure the network as well as answering the question whether node attributes influence the likelihood of a link, we will fit an exponential random graph model. Descriptive statistics throughout the study indicated that the class of proteins may influence the number of interactions among them. To examine the influence of these node attributes on the likelihood of a tie, we will build three different models : 
+In the aim of building a model that captures the hidden structure the network as well as answering the question whether node attributes influence the likelihood of a link, we will fit an exponential random graph model. Descriptive statistics throughout the study indicated that the class of proteins may influence the number of interactions among them. To examine the influence of these node attributes on the likelihood of a tie, we will build three different models:
 
 * ERGM where we consider the lethality as the main effect (i.e. using nodefactor)
 * ERGM where we consider the interaction terms for the nodal attribute lethality (i.e. nodematch)
-* ERGM where both interation terms as well as main effects are considered.
+* ERGM where both interaction terms as well as main effects are considered.
 
-As means of model comparison and model goodness of fit study, we will look at the Bayesian Information Criterion and the diagnostic plots produced by the function *gof* of the *ergm* package in *R*.
+As means of model comparison and model goodness of fit study, we will look at the Bayesian Information Criterion (BIC) and the diagnostic plots produced by the function *gof* of the *ergm* package in *R*.
 
 Hypotheses testing the main effects and the interaction terms can be worded as follows :
 
- *$H_0$ = The category lethal does not affect the probability of forming ties between proteins
+ *$H_0$ = The category lethal does not affect the probability of forming ties between proteins   
  *$H_1$ = The category lethal affects the probability of forming ties between proteins
 
-By definition, nodefactor adds multiple statistics to the model, each one equal to the number of times a node with the specified attribute is at one end of an edge. To interpret the results in summary statistics of the model, it is necessary to know the reference group for any categorical variables. In the statnet package, the reference group in an ERGM defaults to the first group in the list shown in the summary of the network. In our case, the class "lethal" is the reference group for the attribute "lethality" by default. Since the "non-lethal" group contains the most nodes and, by extension, the highest degree, we have set it as the reference group.
+By definition, nodefactor adds multiple statistics to the model, each one equal to the number of times a node with the specified attribute is at one end of an edge. To interpret the results in summary statistics of the model, it is necessary to know the reference group for any categorical variables. In the statnet package, the reference group in an ERGM defaults to the first group in the list shown in the summary of the network. 
+
+In our case, the class "lethal" is the reference group for the attribute "lethality" by default. Since the "non-lethal" group contains the most nodes and, by extension, the highest degree, we have set it as the reference group.
 
 The summary statistics of the first exponential random graph model produces the following output:
 
@@ -273,7 +303,7 @@ The estimates 'lethal' is significant and positive which indicates an increased 
 We can then proceed by computing the probability of forming a link between proteins based on the assumption that the main effect is "lethality" using the *plogis()* function. The result is 54.7% which is significantly high based on the fact that the density of network is just below $0.001$.
 
 ```{r, echo = FALSE, include = FALSE}
-plogis(ergm.fit.1$coef[1])
+plogis(ergm.fit.1$coef[1] + ergm.fit.1$coef[4])
 ```
 
 In order to unveil the homophily in the network, we will fit the second model considering interaction terms. The summary statistics of the model is the following :
@@ -310,15 +340,18 @@ We notice an overall worse fit when we include the above features in our model. 
 
 ## Goodness of fit test
 
-
-Finally, we will summarize all three BIC scores for all three models for comparison in the following table:
+Finally, we will summarize all three BIC and AIC scores for all three models for comparison in the following table:
 
 ```{r comp, echo = FALSE}
-dfs = data.frame(With_nodefactor = summary(ergm.fit.1)$bic, With_notematch = summary(ergm.fit.2)$bic, Both = summary(ergm.fit.3)$bic)
-knitr::kable(round(dfs), caption = "BIC score for all three models", col.names = c("With main effect", "With nodematch", "nodematch & main effect"))
+dfs = data.frame(
+  With_nodefactor = c(summary(ergm.fit.1)$bic, summary(ergm.fit.1)$aic), 
+  With_notematch = c(summary(ergm.fit.2)$bic, summary(ergm.fit.2)$aic),
+  Both = c(summary(ergm.fit.3)$bic, summary(ergm.fit.3)$aic))
+row.names(dfs) = c("BIC", "AIC")
+knitr::kable(round(dfs), caption = "BIC & AIC score for all three models", col.names = c("With main effect", "With nodematch", "nodematch & main effect"))
 ```
 
-We can conclude that the model where lethality is considered the main effect yields the lowest BIC score indicating a better fit than the other two models seen above. To further explore the goodness of fit of the statistical model, we will compute the plots produced using the *gof* function.
+We can conclude that the model where lethality is considered the main effect yields the lowest BIC and AIC score indicating a better fit than the other two models seen above. To further explore the goodness of fit of the statistical model, we will compute the plots produced using the *gof* function.
 
 ```{r diag, echo = FALSE, fig.align='center', fig.width=6, fig.height=5, fig.cap="Diagnostic plots of the goodness of fit", warnings = FALSE}
 par(mfrow = c(2,2))
@@ -326,24 +359,23 @@ gof.model = gof(ergm.fit.1)
 plot(gof.model, main = "Goodness of fit diagnostics", cex.main= 0.4, cex.lab=0.5, cex.axis=0.5)
 ```
 
-Visual analysis of the above goodness of fit plots indicate that the model is able to reconstruct the proportion of edges with respect to the edgewise shared partner
-terms. This is an indication that our model was able to capture the underlying transitivity in the PPI network. The overall statistics of the levels of the attribute "lethality" are also well represented with a slight underestimation for the nodefactor "unknown". 
+Visual analysis of the above goodness of fit plots indicate that the model is able to reconstruct the proportion of edges with respect to the edgewise shared partner terms. This is an indication that our model was able to capture the underlying transitivity in the PPI network. The overall statistics of the levels of the attribute "lethality" are also well represented with a slight underestimation for the nodefactor "unknown". 
 
 However, the model overestimates the proportion of nodes that have lower degrees. For example, we notice a significant peak in the estimated line (code colored black) compared to the empirical estimations (code colored blue). This may be an indication that the degree distribution is not well represented by the model we built. One way to improve the fit of the model is to account for the degree distribution using the gwdegree term which stands for geometrically weighted degree.
 
 ### Adding dependent terms to improve the model
 
-Definition of the geometrically weighted degree (gwdegree)
+<!-- Definition of the geometrically weighted degree (gwdegree) -->
 
 First, we tune our parameter of decay for the *gwdegree()* function, between 0.1 and 0.9. We do not look for higher parameters, since the decrease of the degree distribution is fast. Therefore, it seems reasonable to search a grid of small values of the decay parameter. Next, we will extract the BIC score of each value in the sequence of the decay parameter and refit the model using the optimal one.
 
 ```{r,echo=FALSE,message=FALSE}
-decay<-seq(0.1,0.9,by=0.1)
-bic<-rep(NA,length(decay))
+decay <- seq(0.1,0.8,by=0.1)
+bic <- rep(NA,length(decay))
 
 for (i in 1:length(decay)){
-  fit<-ergm(protein_net ~ edges + nodefactor("lethality",base=2)+ gwdegree(decay[i],fixed=TRUE))
-  bic[i]<-summary(fit)$bic
+  fit <- ergm(protein_net ~ edges + nodefactor("lethality",base=2) + gwdegree(decay[i],fixed=TRUE))
+  bic[i] <- summary(fit)$bic
 }
 
 min.decay<-decay[which.min(bic)]
@@ -390,7 +422,7 @@ row.names(d) = c("gwdegree and gwesp", "gwdegree", "nodefactor", "nodematch", "n
 knitr::kable(d, caption = 'Table summarizing all BIC scores for the models')
 ```
 
-Summary statistics of the last model shows along with figure \ref{fig:diag3} show a good fit except the proportion of statistics across the lethality attribute and an over estimation of the proportion of nodes. In contrast, it yields the lowest BIC score out of all the models tested. 
+Summary statistics of the last model along with figure \ref{fig:diag3} show a good fit except the proportion of statistics across the lethality attribute and an over estimation of the proportion of nodes. In contrast, it yields the lowest BIC score out of all the models tested. 
 
 Figure \ref{fig:diag2}, shows an overall better fit for our network when exploring the 4 plots produced by the gof function and its summary statistics. The increase in its BIC score is acceptable given the fact that it gives better estimations of the model's statistics. We conclude that the model where we only consider gwdegree is best one based on the produced results.
 
@@ -401,5 +433,3 @@ Results showed that proteins of high degree were far more likely to be lethal th
 Findings through the exploratory data analysis and the modeling of the network showed consistent results. We were able to extract rich insight from the network analysis of the PPI.
 
 # References
-
-[citation.1] Freeman LC. Centrality in social networks conceptual clarification. Soc Networks. 1978;1(3):215–39.
