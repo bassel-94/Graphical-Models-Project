@@ -1,7 +1,7 @@
 ---
 title: "Studying the effect of lethality on protein-protein interactions in yeast"
 author: "Michael DARMOUTOMO, Guillaume FRANCHI and Bassel MASRI"
-date: "1/1/2021"
+date: "12/1/2021"
 output:
   pdf_document: default
   pdf: default
@@ -20,7 +20,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 # Introduction
-Protein–protein interactions (PPI) are important to understand, since they give us an insight in how protein interactions affect larger organisms or cells. Modeling these interactions as a network gives us the opportunity to apply statistical graph models and discover relationships in a statistical manner. We can take advantage of graphical features from the network, such as number of edges, structure, centrality, etc. <!-- Some papers that use graph modeling applied on PPI --> In this paper we analyze how the deletion of a protein affects the lethality of a cell. We focus on the yeast Saccharomyces cerevisiae. This paper is an expansion of earlier work by @jeong2001lethality, but expands this literature by applying statistical models to find the relationship between lethality and its interactions. This paper is split up into two parts of analysis, which firstly consists of a descriptive analysis of the network's structure, and secondly it uses an exponential random graph model (henceforth, ERGM) to model the correlation of ties being formed between vertices and attributes such as lethality. These two parts allow us to answer the research question whether there is a statistically significant correlation between the formation of links between proteins and lethality?
+Protein–protein interactions (PPI) are important to understand, since they give us an insight in how protein interactions affect larger organisms or cells. Modeling these interactions as a network gives us the opportunity to apply statistical graph models and discover relationships in a statistical manner. We can take advantage of graphical features from the network, such as number of edges, structure, centrality, etc. In this paper we analyze how the deletion of a protein affects the lethality of a cell. We focus on the yeast Saccharomyces cerevisiae. This paper is an expansion of earlier work by @jeong2001lethality, but expands this literature by applying statistical models to find the relationship between lethality and its interactions. This paper is split up into two parts of analysis, which firstly consists of a descriptive analysis of the network's structure, and secondly it uses an exponential random graph model (henceforth, ERGM) to model the correlation of ties being formed between vertices and attributes such as lethality. These two parts allow us to answer the research question whether there is a statistically significant correlation between the formation of links between proteins and lethality?
 
 This paper continues as follows: Section 2 elaborates the methodology used in this paper, Section 3 consists of the Exploratory Data Analysis, Section 4 contains the Statistical Graph Modeling, and Section 5 contains the Conclusion.
 
@@ -98,7 +98,7 @@ knitr::kable(
 )
 ```
 
-Preliminary visual analysis of the network graphic through figure \ref{fig:net-one} and Table 1 shows that most proteins in the network fall under the category of non-lethal and many of them are *not* clustered towards the center (i.e. on the outskirts of the network with no edges) with no apparent edges (or links). More clustering formations are noticeable towards the center of the graph but we cannot easily distinguish the groups that are clustered together. We can also note that some lethal proteins, code colored red, have significant interactions with other proteins.
+Preliminary visual analysis of the network graphic through Figure \ref{fig:net-one} and Table 1 shows that most proteins in the network fall under the category of non-lethal and many of them are *not* clustered towards the center (i.e. on the outskirts of the network with no edges) with no apparent edges (or links). More clustering formations are noticeable towards the center of the graph but we cannot easily distinguish the groups that are clustered together. We can also note that some lethal proteins, code colored red, have significant interactions with other proteins.
 
 Having a large number of nodes in the network can sometimes obscure important patterns in a network graph. Displaying the largest component (i.e. largest connected group of nodes) in a network can aid in clarifying patterns visually. The largest component which contains most of the nodes in the network can be isolated and graphed. 
 
@@ -145,13 +145,15 @@ knitr::kable(round(df,2), caption = 'Summary statistics of the degree distributi
 
 
 <!-- Change this part -->
-Indeed, like any real world dataset, we see through figure \ref{fig:hist} and Table 2 that most nodes do not interact with other nodes indicating that proteins mostly do not interact with each other. The degree distribution histogram also shows that some proteins have a high degree indicating the bigger nodes seen in figure \ref{fig:net-two} in the PPI network.
+Indeed, like any real world dataset, we see through Figure \ref{fig:hist} and Table 2 that most nodes do not interact with other nodes indicating that proteins mostly do not interact with each other. The degree distribution histogram also shows that some proteins have a high degree indicating the bigger nodes seen in Figure \ref{fig:net-two} in the PPI network.
 
 The average mean degree is roughly $2.1$ indicating that proteins are connected to, and therefore linked with, an average of about $2$ other proteins.
 
 ### Centrality measures
 
 In biological networks, classical centrality measures can offer some rich insight to identify central and, by extension influential nodes [@freeman1978centrality]. Typical descriptive centrality measures such for networks such as the closeness, betweenness and eigenvalue centralities will be examined herein in order to identify important nodes in our PPI network.
+
+\newpage
 
 ```{r centraltab, warning=FALSE, echo = FALSE}
 #-- closeness
@@ -172,8 +174,6 @@ c = round(rbind(avg.bet.cent,avg.eig.cent,avg.clo.cent),3)
 row.names(c) = c("Betweenness", "Eigenvalue", "Closeness")
 knitr::kable(c, caption = 'Average closeness centrality measure')
 ```
-
-\newpage
 
 ```{r centralhist, fig.align='center', fig.width=12, fig.height=3.5, fig.cap="Centrality measures", echo = FALSE, warning=FALSE }
 library(gridExtra)
@@ -200,7 +200,7 @@ p3 = ggplot(data) +
 grid.arrange(p1, p2, p3, ncol=3)
 ```
 
-When examining the plots in figure \ref{fig:centralhist}, we notice that the closeness centrality gives a Gaussian distribution with minimal changes in scores. This may be an indication of a highly-connected network. The betweenness centrality shows that most nodes (i.e. proteins) are not central, hinting that not many proteins are on the periphery of multiple clusters. The visual exploration of the data in figure \ref{fig:net-two} also does not show a high number of "central" proteins. 
+When examining the plots in Figure \ref{fig:centralhist}, we notice that the closeness centrality gives a Gaussian distribution with minimal changes in scores. This may be an indication of a highly-connected network. The betweenness centrality shows that most nodes (i.e. proteins) are not central, hinting that not many proteins are on the periphery of multiple clusters. The visual exploration of the data in Figure \ref{fig:net-two} also does not show a high number of "central" proteins. 
 
 Finally, the Eigenvalue centrality which identifies nodes with influence over the whole network, shows insignificant scores for most of the nodes in the network. Only one node holds a higher value of 1 which, given the total number of nodes in the network, is still insignificant. Therefore, we conclude that centrality measures do not offer much insight at this stage regarding the subclass of the proteins.
 
@@ -299,7 +299,7 @@ ergm.fit.1 = ergm(protein_net ~ nodefactor("lethality", base = 2) + edges)
 print(summary(ergm.fit.1))
 ```
 
-The estimates 'lethal' is significant and positive which indicates an increased likelihood to form ties for proteins when they have been classified as "lethal" compared to those classified as "unknown" and 'other'. These results are consistent with the mixing matrix in Table 4 and figure \ref{fig:rel}.
+The estimates 'lethal' is significant and positive which indicates an increased likelihood to form ties for proteins when they have been classified as "lethal" compared to those classified as "unknown" and 'other'. These results are consistent with the mixing matrix in Table 4 and Figure \ref{fig:rel}.
 
 We can then proceed by computing the probability of forming a link between proteins based on the assumption that the main effect is "lethality" using the *plogis()* function. The result is about 0.00121 in terms of density which is slightly higher than the graph's density, that is just below $0.001$. This is an indication that the likelihood of this connection is higher than the network's average and thus confirming its significance.
 
@@ -425,7 +425,7 @@ row.names(d) = c("gwdegree and gwesp", "gwdegree", "nodefactor", "nodematch", "n
 knitr::kable(d, caption = 'Table summarizing all BIC scores for the models')
 ```
 
-Summary statistics of the last model along with figure \ref{fig:diag3} show a good fit except the proportion of statistics across the lethality attribute and an over estimation of the proportion of nodes. In contrast, it yields the lowest BIC score out of all the models tested. 
+Summary statistics of the last model along with its diagnostic plots show a good fit except the proportion of statistics across the lethality attribute and an over estimation of the proportion of nodes. In contrast, it yields the lowest BIC score out of all the models tested. 
 
 Figure \ref{fig:diag2}, shows an overall better fit for our network when exploring the 4 plots produced by the gof function and its summary statistics. The increase in its BIC score is acceptable given the fact that it gives better estimations of the model's statistics. We conclude that the model where we only consider gwdegree is best one based on the produced results.
 
