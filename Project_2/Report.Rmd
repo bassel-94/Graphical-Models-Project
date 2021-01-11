@@ -3,11 +3,11 @@ title: "Studying the effect of lethality on protein-protein interactions in yeas
 author: "Michael DARMOUTOMO, Guillaume FRANCHI and Bassel MASRI"
 date: "1/1/2021"
 output:
+  pdf_document: default
+  pdf: default
   html_document:
     number_sections: true
     df_print: paged
-  pdf: default
-  pdf_document: default
 bibliography: bibliography.bibtex
 ---
 
@@ -88,7 +88,7 @@ plot(protein_net, vertex.col = l, edge.col = "grey40", main = "Interaction among
 legend("bottomright", legend=c("Lethal", "Non-Lethal", "Other", "Unknown"), col = my.pal, pch = 19, pt.cex=0.9, cex = 0.5)
 ```
 
-Table \ref{tab:tab-one} shows the frequency distribution of the different levels of lethality in the network.
+Table 1 shows the frequency distribution of the different levels of lethality in the network.
 
 ```{r tab-one, echo = FALSE}
 knitr::kable(
@@ -98,7 +98,7 @@ knitr::kable(
 )
 ```
 
-Preliminary visual analysis of the network graphic through \ref{fig:net-one} and \ref{tab:tab-one} shows that most proteins in the network fall under the category of non-lethal and many of them are *not* clustered towards the center (i.e. on the outskirts of the network with no edges) with no apparent edges (or links). More clustering formations are noticeable towards the center of the graph but we cannot easily distinguish the groups that are clustered together. We can also note that some lethal proteins, code colored red, have significant interactions with other proteins.
+Preliminary visual analysis of the network graphic through figure \ref{fig:net-one} and table 1 shows that most proteins in the network fall under the category of non-lethal and many of them are *not* clustered towards the center (i.e. on the outskirts of the network with no edges) with no apparent edges (or links). More clustering formations are noticeable towards the center of the graph but we cannot easily distinguish the groups that are clustered together. We can also note that some lethal proteins, code colored red, have significant interactions with other proteins.
 
 Having a large number of nodes in the network can sometimes obscure important patterns in a network graph. Displaying the largest component (i.e. largest connected group of nodes) in a network can aid in clarifying patterns visually. The largest component which contains most of the nodes in the network can be isolated and graphed. 
 
@@ -129,7 +129,7 @@ legend("bottomright", legend=c("Lethal", "Non-Lethal", "Other", "Unknown"), col 
 
 ### Degree distribution
 
-In addition to visualization, examining network and node characteristics can provide some insight into network structures and possible modeling strategies. Network size and density have been discussed earlier in the introduction. In this section, we will focus on the average number of links per node (mean degree), through a histogram describing the distribution along with a summary statistics table for a better quantitative description.
+In addition to visualization, examining network and node characteristics can provide some insight into network structures and possible modeling strategies. The network size have been discussed earlier in the introduction. In this section, we will focus on the average number of links per node (mean degree), through a histogram describing the distribution along with a summary statistics table for a better quantitative description.
 
 ```{r hist, fig.align='center', fig.width=5, fig.height=3.5, fig.cap="Degree distribution of the proteins", echo = FALSE, warning=FALSE }
 protein.degrees.df = data.frame(degree = igraph::degree(protein))
@@ -145,7 +145,7 @@ knitr::kable(round(df,2), caption = 'Summary statistics of the degree distributi
 
 
 <!-- Change this part -->
-Indeed, like any real world dataset, we see through figure \ref{fig:hist} and table \ref{tab:stat} that most nodes do not interact worth other nodes indicating that proteins mostly do not interact with each other. The degree distribution histogram also shows that some proteins have a high degree indicating the bigger nodes seen in graph \ref{fig:net-two} in the PPI network.
+Indeed, like any real world dataset, we see through figure \ref{fig:hist} and table 2 that most nodes do not interact with other nodes indicating that proteins mostly do not interact with each other. The degree distribution histogram also shows that some proteins have a high degree indicating the bigger nodes seen in figure \ref{fig:net-two} in the PPI network.
 
 The average mean degree is roughly $2.1$ indicating that proteins are connected to, and therefore linked with, an average of about $2$ other proteins.
 
@@ -173,6 +173,8 @@ row.names(c) = c("Betweenness", "Eigenvalue", "Closeness")
 knitr::kable(c, caption = 'Average closeness centrality measure')
 ```
 
+\newpage
+
 ```{r centralhist, fig.align='center', fig.width=12, fig.height=3.5, fig.cap="Centrality measures", echo = FALSE, warning=FALSE }
 library(gridExtra)
 data = data.frame(Closeness = clo.cent, Betweenness = bet.cent, Eigenvalue = eig.cent)
@@ -198,13 +200,13 @@ p3 = ggplot(data) +
 grid.arrange(p1, p2, p3, ncol=3)
 ```
 
-When examining the plots in figure \ref{fig:centralhist}, we notice that the closeness centrality gives Gaussian distribution with minimal changes in scores. This may be an indication of a highly-connected network. The betweenness centrality shows that most nodes (i.e. proteins) are not central, hinting that not many proteins are on the periphery of multiple clusters. The visual exploration of the data in figure \ref{fig:net-two} also does not show a high number of "central" proteins. 
+When examining the plots in figure \ref{fig:centralhist}, we notice that the closeness centrality gives a Gaussian distribution with minimal changes in scores. This may be an indication of a highly-connected network. The betweenness centrality shows that most nodes (i.e. proteins) are not central, hinting that not many proteins are on the periphery of multiple clusters. The visual exploration of the data in figure \ref{fig:net-two} also does not show a high number of "central" proteins. 
 
 Finally, the Eigenvalue centrality which identifies nodes with influence over the whole network, shows insignificant scores for most of the nodes in the network. Only one node holds a higher value of 1 which, given the total number of nodes in the network, is still insignificant. Therefore, we conclude that centrality measures do not offer much insight at this stage regarding the subclass of the proteins.
 
 ### Mixing matrix
 
-The network visualizations above showed some potential clustering; another option for identifying clustering is to examine mixing matrices and correlation coefficients. Mixing matrices can be used to examine the number of connected dyads (pairs of proteins in our case) for each possible combination of levels for a categorical node attribute. 
+The network visualizations above showed some potential clustering; another option for identifying clustering is to examine mixing matrices. Mixing matrices can be used to examine the number of connected dyads (pairs of proteins in our case) for each possible combination of levels for a categorical node attribute. 
 
 For example, how many connected dyads are forming when both proteins are classified as non-lethal or is there some clustering between lethal proteins and non-lethal ones? We already found some evidence of clustering by different levels of lethality and a mixing matrix can help confirm these patterns.
 
@@ -212,7 +214,7 @@ For example, how many connected dyads are forming when both proteins are classif
 knitr::kable(mixingmatrix(protein_net, "lethality")[[2]], caption = "Mixing matrix of the attribute lethality")
 ```
 
-Indeed, the mixing matrix shown in table \ref{tab:mixmat} indicates a bias towards forming ties between proteins when they hold different classes (i.e. non-lethal with lethal). This may be captured later on we take into account homophily in the network in the following section. 
+Indeed, the mixing matrix shown in table 4 indicates a bias towards forming ties between proteins when they hold different classes (i.e. non-lethal with lethal). This may be captured later on we take into account homophily in the network in the following section. 
 
 More in detail, of the 886 connected dyads including lethal proteins, about 25% (218 proteins) are linked with ones that are also classified as lethal. However, a much higher number of links are formed with non-lethal proteins. 
 
@@ -225,7 +227,7 @@ m = tapply(n, lethality, mean)
 
 #-- plot the average links per lethality
 plot(sort(m), type = "b", cex = 0.7,
-     col = "blue4",
+     col = "grey40",
      axes = FALSE, 
      ylab="Average links", 
      xlab="Lethality level",
@@ -241,17 +243,15 @@ box()
 knitr::kable(round(sort(m),1), col.names = "Average link", caption = "Average links per class of protein")
 ```
 
-Figure \ref{fig:rel} and table \ref{tab:freqt} confirm that lethal proteins have a higher number of links thus indicating that proteins of high degree are indeed more likely to be lethal than those of lower degree.
+Figure \ref{fig:rel} and table 5 confirm that lethal proteins have, on average, a higher number of links thus indicating that proteins of high degree are indeed more likely to be lethal than those of lower degree.
 
 ## Small World simulation
 
-As with many forms of model building, statistical network modeling should begin with a null model. The null model is a simple random graph model, there are no complex dependence assumptions to account for.
+Any model building procedure in network analysis should start with a random model (also known as a null model) which is build without any complex assumptions. Such assumptions can help capture some of the network's statistics in a numerical procedure. Herein, we will simulate the network's measures based on the small world property which can aid in understanding how well the latter captures the structures comprising the observed PPI network.
 
-Although the null model is a good representation of the observed density of the PPI network, it is unlikely to be a good representation of other observed network characteristics. Simulating the network's measures based on the small world property can aid in understanding how well the latter captures the structures comprising the observed network.
+A small-world network is a graph where most nodes are not neighbors of one other, but any path between two nodes can be reached in a few steps. In order to do this, we compare the properties of a an Erdős–Rényi model with the same number of edges and vertices as the PPI dataset. We specifically look at the main graph and its properties.
 
-To gain more knowledge about the PPI network, we explore its small-world property. A small-world network is a graph where most nodes are not neighbors of one other, but any path between two nodes can be reached in a few steps. In order to do this, we compare the properties of a an Erdős–Rényi model with the same number of edges and vertices as the PPI dataset. We specifically look at the main graph and its properties.
-
-```{r}
+```{r,warning=FALSE, echo = FALSE}
 df = data.frame(
   diameter = c(19, 16.524),
   avg_sp = c(6.812366, 7.091927),
@@ -260,7 +260,7 @@ df = data.frame(
 
 row.names(df) = c("PPI Dataset", "ER model")
 knitr::kable(
- df, col.names = c("Diameter", "Average shortest path", "Transitivity (Clustering Coefficient)")
+ df, col.names = c("Diameter", "Average shortest path", "Transitivity (Clustering Coefficient)"), caption = "Small property simulation results"
 )
 ```
 
@@ -270,11 +270,12 @@ In order to quantify the property small-worldness, we compare the shortest avera
 
 ## Exponential random graph modeling
 
-In the aim of building a model that captures the hidden structure the network as well as answering the question whether node attributes influence the likelihood of a link, we will fit an exponential random graph model. Descriptive statistics throughout the study indicated that the class of proteins may influence the number of interactions among them. To examine the influence of these node attributes on the likelihood of a tie, we will build three different models:
+In the aim of building a model that captures the hidden structure the network as well as answering the question whether node attributes influence the likelihood of a link, we will fit an exponential random graph model. Descriptive statistics throughout the study indicated that the class of proteins may influence the number of interactions among them. To examine the influence of these node attributes on the likelihood of a tie, we will build 5 different models where we consider :
 
-* ERGM where we consider the lethality as the main effect (i.e. using nodefactor)
-* ERGM where we consider the interaction terms for the nodal attribute lethality (i.e. nodematch)
-* ERGM where both interaction terms as well as main effects are considered.
+* The main effect of lethality (i.e. using nodefactor)
+* The interaction terms for lethality (i.e. nodematch)
+* Both interaction terms as well as main effects
+* Two last models where we take into account different dependence terms
 
 As means of model comparison and model goodness of fit study, we will look at the Bayesian Information Criterion (BIC) and the diagnostic plots produced by the function *gof* of the *ergm* package in *R*.
 
@@ -298,9 +299,9 @@ ergm.fit.1 = ergm(protein_net ~ nodefactor("lethality", base = 2) + edges)
 print(summary(ergm.fit.1))
 ```
 
-The estimates 'lethal' is significant and positive which indicates an increased likelihood to form ties for proteins when they have been classed as 'lethal' compared to those classified as 'unknown' and 'other'. These results are consistent with the mixing matrix in table \ref{tab:mixmat} and figure \ref{fig:rel}.
+The estimates 'lethal' is significant and positive which indicates an increased likelihood to form ties for proteins when they have been classed as 'lethal' compared to those classified as 'unknown' and 'other'. These results are consistent with the mixing matrix in table 4 and figure \ref{fig:rel}.
 
-We can then proceed by computing the probability of forming a link between proteins based on the assumption that the main effect is "lethality" using the *plogis()* function. The result is 54.7% which is significantly high based on the fact that the density of network is just below $0.001$.
+We can then proceed by computing the probability of forming a link between proteins based on the assumption that the main effect is "lethality" using the *plogis()* function. The result is about 0.00121 in terms of density which is slightly higher than the graph's density, that is just below $0.001$. This is an indication that the likelihood of this connection is higher than the network's average and thus confirming its significance.
 
 ```{r, echo = FALSE, include = FALSE}
 plogis(ergm.fit.1$coef[1] + ergm.fit.1$coef[4])
@@ -316,11 +317,11 @@ ergm.fit.2 = ergm(protein_net ~ edges + nodematch("lethality", diff=T))
 summary(ergm.fit.2)
 ```
 
-The first thing to notice is that the estimate that corresponds to nodematch.lethality.Other is -Inf. Looking again at the mixing matrix in table \ref{tab:mixmat}, we conclude that this is due to the absence of interactions of this class with other classes. Therefore, we will continue focusing on the two main classes of the network "Lethal" and "Non-lethal".
+The first thing to notice is that the estimate that corresponds to nodematch.lethality.Other is -Inf. Looking again at the mixing matrix in table 4, we conclude that this is due to the absence of interactions of this class with other classes. Therefore, we will continue focusing on the two main classes of the network "Lethal" and "Non-lethal".
 
-The resulting model shows significant positive coefficient for lethal homophily in the network. That is, two proteins in the same category "lethal" are more likely to be connected further confirming our findings. The model also shows non significant coefficients for the class non-lethal. In this case, predicting the probability of forming a tie goes up to 74.3% which means that the homophily is better captured in this model compared to the one where we only consider lethality as the main effect.
+The resulting model shows significant positive coefficient for lethal homophily in the network. That is, two proteins in the same category "lethal" are more likely to be connected further confirming our findings. The model also shows non significant coefficients for the class non-lethal. In this case, predicting the probability of forming a tie goes up to 0.002 in terms of density, which is twice the likelihood of forming ties in the network given by its density. To put differently, it means that the homophily is better captured in this model compared to the one where we only consider lethality as the main effect.
 
-However, both models contained estimates in which the p-value is small enough to reject the null hypothesis.
+It is worth mentioning that in both models contained estimates in which the p-value is small enough to reject the null hypothesis.
 
 ```{r, echo = FALSE, include = FALSE}
 plogis(ergm.fit.2$coef[1] + ergm.fit.2$coef[2])
@@ -401,7 +402,7 @@ ergm.fit.5<- ergm(protein_net ~ edges +
 summary(ergm.fit.5)
 ```
 
-```{r diag3, echo=FALSE,message=FALSE, warning=FALSE}
+```{r diag3, echo=FALSE, warning=FALSE, caption = 'Goodness of fit diagnostic plots for the full model'}
 gof.5<-gof(ergm.fit.5)
 par(mfrow=c(2,2))
 plot(gof.5, main = "Goodness of fit diagnostics with gwdegree and gwesp", cex.main= 0.4, cex.lab=0.5, cex.axis=0.5)
@@ -410,12 +411,14 @@ plot(gof.5, main = "Goodness of fit diagnostics with gwdegree and gwesp", cex.ma
 ```{r bictable, echo=FALSE,message=FALSE, warning=FALSE}
 #-- arrange all BIC scores in a data frame
 library(dplyr)
-d = dfs %>% 
-  mutate(gwdegree_gwep = summary(ergm.fit.5)$bic, gwdegree = summary(ergm.fit.4)$bic) %>%
-  as.matrix() %>% 
+
+d = dfs %>%
+  mutate(gwdegree_gwep = c(summary(ergm.fit.5)$bic, summary(ergm.fit.5)$aic),
+         gwdegree = c(summary(ergm.fit.4)$bic, summary(ergm.fit.4)$aic)) %>%
+  as.matrix() %>%
   t() %>%
-  as.data.frame() %>% 
-  rename(BIC = V1) %>% 
+  as.data.frame() %>%
+  rename(BIC = V1, AIC = V2) %>% 
   sort()
 
 row.names(d) = c("gwdegree and gwesp", "gwdegree", "nodefactor", "nodematch", "nodefactor and nodematch")
@@ -428,8 +431,12 @@ Figure \ref{fig:diag2}, shows an overall better fit for our network when explori
 
 # Conclusion
 
-Knowledge about how they interact can lead to better understanding of a great many diseases and it can help in the design of appropriate therapies. 
-Results showed that proteins of high degree were far more likely to be lethal than those of lower degree.
-Findings through the exploratory data analysis and the modeling of the network showed consistent results. We were able to extract rich insight from the network analysis of the PPI.
+Knowledge about how proteins interact can lead to better understanding of many diseases and it can help design appropriate medicin for serious illenesses. Throughout this paper, we have underlined the importance of some proteins in yeast that might have lethal consequences, should they be removed. 
+
+Using simple descriptive statistical tools for graphical models, we immediately saw that proteins that have been classified as "lethal" have indeed more ties than others. Further from the findings resulting from model free approaches that we tested in this paper, we tried to understand how the proteins bind together using probabilistic models like ERGM. It has become clearer that lethal proteins are more likely to interact with others.
+
+More genrally, data science techniques have helped us interprete biological networks eventhough we lack the appropriate background for it. Experimenting with this network dataset have allowed us to affirm, with high confidence, that the lethality attribute of a protein depends strongly on its number of interactions. Therefore, it is easy to draw the general conclusion of this study by confirming that the more a protein has links, the more likely it is to be essential to the yeast. One can easily imagine that a protein which interacts with a lot of other proteins is far more essential to the good functionning of a cell. 
+
+Finally, it is worth mentioning that our models never fitted perfectly and we can assume that there might exist some other attributes of proteins that could also explain the lethality. It is still a work in progress, and one must still find some relevant measurements to prefectly identify the lethal proteins.
 
 # References
